@@ -58,7 +58,7 @@ export default function Home() {
         <span className="text-indigo-500">✦</span> EXPLORE AI
       </div>
       <div className="mt-3 grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Link to="/caller-tunes" className="group flex items-center gap-4 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition hover:shadow-md">
+        <Link to="/soon/AI%20Caller%20Tune" className="group flex items-center gap-4 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition hover:shadow-md">
           <span className="grid h-12 w-12 place-items-center rounded-xl bg-indigo-50 text-xl">🎵</span>
           <div className="flex-1">
             <div className="font-bold">AI Caller Tune</div>
@@ -66,7 +66,7 @@ export default function Home() {
           </div>
           <span className="text-gray-300 transition group-hover:text-gray-500">↗</span>
         </Link>
-        <Link to="/ai-receptionist" className="group flex items-center gap-4 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition hover:shadow-md">
+        <Link to="/soon/AI%20Receptionist" className="group flex items-center gap-4 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition hover:shadow-md">
           <span className="grid h-12 w-12 place-items-center rounded-xl bg-emerald-50 text-xl">🎧</span>
           <div className="flex-1">
             <div className="font-bold">AI Receptionist</div>
@@ -92,7 +92,7 @@ export default function Home() {
           <button onClick={load} className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold hover:bg-gray-50">
             ⟳ Refresh
           </button>
-          <Link to="/call-logs" className="text-sm font-semibold text-blue-600 hover:underline">
+          <Link to="/soon/Call%20History" className="text-sm font-semibold text-blue-600 hover:underline">
             Details ›
           </Link>
         </div>

@@ -3,27 +3,31 @@ import { NavLink, Outlet, Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import client from '../api/client'
 
+// Built pages have real routes; the rest keep the Superfone sidebar look
+// but land on a Coming Soon placeholder until they're in scope.
+const soon = (label) => `/soon/${encodeURIComponent(label)}`
+
 const NAV = [
   { to: '/', label: 'Home', icon: '🏠', end: true },
   { to: '/teams', label: 'Teams', icon: '🏢' },
-  { to: '/call-logs', label: 'Call History', icon: '📞' },
-  { to: '/analytics', label: 'Reports', icon: '📊' },
-  { to: '/insights', label: 'Insights', icon: '📈' },
-  { to: '/reminders', label: 'To Dos', icon: '📝' },
-  { to: '/contacts', label: 'Contacts', icon: '👤' },
-  { to: '/ai-receptionist', label: 'AI Receptionist', icon: '✦', ai: true, isNew: true },
-  { to: '/ai-sales-agent', label: 'AI Sales Agent', icon: '✦', ai: true, isNew: true },
-  { to: '/caller-tunes', label: 'AI Caller Tune', icon: '✦', ai: true },
-  { to: '/ai-google-business', label: 'AI Google Business Rev…', icon: '✦', ai: true },
-  { to: '/inbox', label: 'Whatsapp', icon: '💬' },
-  { to: '/campaigns', label: 'Broadcast', icon: '📣' },
-  { to: '/wallet', label: 'Wallet', icon: '👛' },
+  { to: soon('Call History'), label: 'Call History', icon: '📞' },
+  { to: soon('Reports'), label: 'Reports', icon: '📊' },
+  { to: soon('Insights'), label: 'Insights', icon: '📈' },
+  { to: soon('To Dos'), label: 'To Dos', icon: '📝' },
+  { to: soon('Contacts'), label: 'Contacts', icon: '👤' },
+  { to: soon('AI Receptionist'), label: 'AI Receptionist', icon: '✦', ai: true, isNew: true },
+  { to: soon('AI Sales Agent'), label: 'AI Sales Agent', icon: '✦', ai: true, isNew: true },
+  { to: soon('AI Caller Tune'), label: 'AI Caller Tune', icon: '✦', ai: true },
+  { to: soon('AI Google Business Reviews'), label: 'AI Google Business Rev…', icon: '✦', ai: true },
+  { to: soon('Whatsapp'), label: 'Whatsapp', icon: '💬' },
+  { to: soon('Broadcast'), label: 'Broadcast', icon: '📣' },
+  { to: soon('Wallet'), label: 'Wallet', icon: '👛' },
   { to: '/settings', label: 'Settings', icon: '⚙️' },
   { to: '/integrations', label: 'Integrations', icon: '🧩' },
-  { to: '/automations', label: 'Automations', icon: '🤖' },
+  { to: soon('Automations'), label: 'Automations', icon: '🤖' },
   { to: '/team-members', label: 'Team Members', icon: '👥' },
-  { to: '/notes', label: 'Notes', icon: '🗒️' },
-  { to: '/templates', label: 'Quick Message', icon: '💭' },
+  { to: soon('Notes'), label: 'Notes', icon: '🗒️' },
+  { to: soon('Quick Message'), label: 'Quick Message', icon: '💭' },
 ]
 
 // WhatsApp deep link used by the real product for buying numbers.
@@ -71,7 +75,7 @@ export default function Layout() {
         </div>
 
         <Link
-          to="/live-calls"
+          to={soon('Live Call Dashboard')}
           className="relative rounded-lg border-2 border-gray-800 px-5 py-1.5 text-[15px] font-semibold shadow-[3px_3px_0_#d1d5db] transition hover:bg-gray-50"
         >
           Live Call Dashboard

@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Customer;
-use App\Models\Payment;
 use Illuminate\Http\Request;
 
 /**
@@ -59,16 +58,6 @@ class OrgController extends Controller
         $org->update([
             'expires_at' => $base->copy()->addDays($org->plan->validity_days),
             'status' => 'active',
-        ]);
-
-        Payment::create([
-            'invoice_no' => sprintf('INV-%s-%04d', now()->format('Y'), Payment::whereYear('created_at', now()->year)->count() + 1),
-            'customer_id' => $org->id,
-            'plan_id' => $org->plan_id,
-            'amount' => $price,
-            'method' => 'wallet',
-            'status' => 'paid',
-            'paid_at' => now(),
         ]);
 
         return response()->json([

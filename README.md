@@ -1,74 +1,49 @@
 # Superfone Admin
 
-A business-calling admin panel built as a **Laravel 12 API** + **React (Vite) SPA**, inspired by the Superfone admin dashboard. It manages customers (businesses), virtual numbers, call logs, and subscription plans.
+A replica of the Superfone owner dashboard (admin.superfone.co.in) built as a
+**Laravel 12 API** + **React (Vite) SPA**. The logged-in user is a business
+owner managing their organizations, staff, settings, and lead integrations.
+
+## Current scope — 5 pages
+
+| Page             | Route           | What it does                                                            |
+| ---------------- | --------------- | ----------------------------------------------------------------------- |
+| **Home**         | `/`             | Greeting, Explore AI cards, Call/Customer/Staff insights (date range), subscription overview |
+| **Teams**        | `/teams`        | Orgs table (status, number, staff x/y, leads x/y), Renew from wallet, Addon Purchase modal |
+| **Team Members** | `/team-members` | Staff across teams (name/role/state), Add staff modal (+91 phone, team, role) |
+| **Settings**     | `/settings`     | 5 tabs: Tags · Call Settings (sticky agent, IVR, ringing order) · CRM (lead stages + templates, groups) · Custom Fields · Priority Order |
+| **Integrations** | `/integrations` | Lead sources (Facebook wizard: name → page → form), 15-provider catalog, ACTIVE toggle |
+
+Every other sidebar item lands on a **Coming Soon** placeholder (`/soon/:title`)
+so the full Superfone navigation look is kept while the codebase stays focused.
+
+> The full earlier build (sticky-agent call engine, Live Call Dashboard,
+> WhatsApp inbox/broadcast, CRM pages, billing/analytics) is preserved in git —
+> first commit `Snapshot: full build before focusing codebase on 5 pages`.
 
 ## Stack
 
-| Layer    | Tech                                                         |
-| -------- | ----------------------------------------------------------- |
-| Backend  | Laravel 12, Sanctum token auth, MySQL (`superfone` database) |
-| Frontend | React 19, Vite, React Router, Tailwind CSS v4, Chart.js      |
-
-## Project layout
-
-```
-superfone/
-├── backend/    Laravel API
-└── frontend/   React SPA
-```
-
-## Prerequisites
-
-- XAMPP running **MySQL** (the `superfone` database is used)
-- PHP 8.2+ and Composer
-- Node 18+ and npm
-
-## Setup (already done once)
-
-```bash
-# Backend
-cd backend
-composer install
-# .env already points DB_DATABASE=superfone (root / no password)
-php artisan migrate:fresh --seed   # creates tables + sample data
-
-# Frontend
-cd ../frontend
-npm install
-```
+| Layer    | Tech                                                          |
+| -------- | ------------------------------------------------------------- |
+| Backend  | Laravel 12, Sanctum token auth, MySQL (`superfone` database)   |
+| Frontend | React 19, Vite, React Router, Tailwind CSS v4, Inter font      |
 
 ## Running
 
 ### Production (single URL — recommended)
 
-Build the SPA into Laravel, then serve everything from one origin:
-
 ```bash
-# From the project root: builds the React app and publishes it into Laravel
-bash build.sh
-
-# Then start the app
+bash build.sh              # builds the SPA and publishes it into Laravel
 cd backend
-php artisan serve
+php artisan serve          # → http://localhost:8000
 ```
 
-Open **http://localhost:8000** — the React SPA, its API, and client-side
-routing (deep links like `/customers`) are all served by Laravel. No CORS,
-no second server. Re-run `bash build.sh` after any frontend change.
-
-### Development (hot reload — two terminals)
+### Development (hot reload)
 
 ```bash
-# Terminal 1 — API on http://localhost:8000
-cd backend
-php artisan serve
-
-# Terminal 2 — SPA with hot reload on http://localhost:5173
-cd frontend
-npm run dev
+cd backend  && php artisan serve    # API  → :8000
+cd frontend && npm run dev          # SPA  → :5173
 ```
-
-Then open **http://localhost:5173** (the dev build points at `http://localhost:8000/api`).
 
 ## Login
 
@@ -77,35 +52,20 @@ Email:    admin@superfone.test
 Password: admin123
 ```
 
-## Modules
+## API surface (all under `/api`, Bearer token except login)
 
-| Section            | Frontend route   | API base            |
-| ------------------ | ---------------- | ------------------- |
-| Dashboard          | `/`              | `/dashboard`        |
-| Customers          | `/customers`     | `/customers`        |
-| Contacts (CRM)     | `/contacts`      | `/contacts`         |
-| Leads (pipeline)   | `/leads`         | `/leads`            |
-| Reminders          | `/reminders`     | `/reminders`        |
-| Team & roles       | `/team`          | `/team-members`     |
-| Virtual Numbers    | `/numbers`       | `/virtual-numbers`  |
-| Call Logs          | `/call-logs`     | `/call-logs`        |
-| WhatsApp Inbox     | `/inbox`         | `/conversations`    |
-| Templates          | `/templates`     | `/templates`        |
-| Campaigns          | `/campaigns`     | `/campaigns`        |
-| AI Agents          | `/ai-agents`     | `/ai-agents`        |
-| Plans              | `/plans`         | `/plans`            |
-| Payments           | `/payments`      | `/payments`         |
-| Analytics          | `/analytics`     | `/analytics`        |
-
-Auth: `POST /api/login`, `GET /api/me`, `POST /api/logout`. All other
-`/api` routes require a Bearer token.
+- `POST /login` · `GET /me` · `POST /logout`
+- `GET /home` — insights for a `from`/`to` date range
+- `GET /orgs` · `POST /orgs/{org}/renew`
+- `GET /addons` · `POST /addons/purchase` · `GET /addon-purchases`
+- `apiResource /team-members`
+- `GET|POST|PATCH|DELETE /settings/*` — tags, lead-stages (+templates), lead-groups, custom-fields, call, ring-order, priority
+- `GET|POST|PATCH|DELETE /integrations` + `GET /integrations/facebook/pages[/{id}/forms]`
 
 ## Notes
 
-- Auth uses Sanctum personal access tokens stored in `localStorage`.
-- Dev API base URL is set in `frontend/.env`; the production build uses `/api`
-  (relative) from `frontend/.env.production`.
-- Re-seed anytime with `php artisan migrate:fresh --seed` in `backend/`.
-- `build.sh` compiles the SPA and publishes it into `backend/public/assets`
-  plus `backend/resources/spa.html` (served by the catch-all route in
-  `routes/web.php`).
+- Re-seed anytime: `cd backend && php artisan migrate:fresh --seed`
+- Facebook pages/forms are served by a simulated driver shaped like the Meta
+  Graph API ([FacebookLeadSource](backend/app/LeadSources/FacebookLeadSource.php)) —
+  swap in real Graph calls once the client provides a Meta App + OAuth.
+- "Buy a new Number" opens a WhatsApp deep link, matching the real product.

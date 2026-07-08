@@ -14,7 +14,6 @@ class CallLog extends Model
         'caller',
         'direction',
         'duration_sec',
-        'recording_url',
         'status',
         'called_at',
     ];

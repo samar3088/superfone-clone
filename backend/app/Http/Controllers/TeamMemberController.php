@@ -9,8 +9,7 @@ class TeamMemberController extends Controller
 {
     public function index(Request $request)
     {
-        $query = TeamMember::with('customer:id,business_name')
-            ->withCount('handledCalls');
+        $query = TeamMember::with('customer:id,business_name');
 
         if ($search = $request->query('search')) {
             $query->where(function ($q) use ($search) {
@@ -33,19 +32,6 @@ class TeamMemberController extends Controller
         }
 
         return $query->orderBy('name')->paginate(10)->withQueryString();
-    }
-
-    /**
-     * Top agents by calls handled, for the team leaderboard.
-     */
-    public function leaderboard()
-    {
-        return TeamMember::with('customer:id,business_name')
-            ->where('role', 'member')
-            ->withCount('handledCalls')
-            ->orderByDesc('handled_calls_count')
-            ->limit(5)
-            ->get();
     }
 
     public function store(Request $request)
