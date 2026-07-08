@@ -1,0 +1,32 @@
+@import "tailwindcss";
+@import "@fontsource-variable/inter";
+
+@theme {
+  --color-brand: #6c5ce7;
+  --color-brand-dark: #5a4bd1;
+  --color-sidebar: #141a2e;
+  --font-sans: "Inter Variable", -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: #f4f6fb;
+  color: #1b2333;
+  font-family: "Inter Variable", -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11"; /* Inter's open forms — closer to Superfone's look */
+}
+
+.scroll-thin::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+.scroll-thin::-webkit-scrollbar-thumb {
+  background: #d6dae6;
+  border-radius: 999px;
+}
