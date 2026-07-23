@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Settings · Superfone Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700;800&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/superfone.css">
+</head>
+<body>
+<div class="shell">
+
+  <aside class="sidebar">
+    <div class="brand"><span class="brand-bolt">⚡</span><span class="brand-name">Superfone</span></div>
+    <nav class="nav">
+      <a class="nav-item" href="home.html"><span class="ic">🏠</span>Home</a>
+      <a class="nav-item" href="teams.html"><span class="ic">🏢</span>Teams</a>
+      <a class="nav-item" href="#"><span class="ic">📞</span>Call History</a>
+      <a class="nav-item" href="#"><span class="ic">📊</span>Reports</a>
+      <a class="nav-item" href="#"><span class="ic">📈</span>Insights</a>
+      <a class="nav-item" href="#"><span class="ic">📝</span>To Dos</a>
+      <a class="nav-item" href="#"><span class="ic">👤</span>Contacts</a>
+      <div class="nav-label">AI Suite</div>
+      <a class="nav-item ai" href="#"><span class="ic">✦</span>AI Receptionist<span class="new">NEW</span></a>
+      <a class="nav-item ai" href="#"><span class="ic">✦</span>AI Sales Agent<span class="new">NEW</span></a>
+      <a class="nav-item ai" href="#"><span class="ic">✦</span>AI Caller Tune</a>
+      <a class="nav-item ai" href="#"><span class="ic">✦</span>AI Google Reviews</a>
+      <div class="nav-label">Channels</div>
+      <a class="nav-item" href="#"><span class="ic">💬</span>Whatsapp</a>
+      <a class="nav-item" href="#"><span class="ic">📣</span>Broadcast</a>
+      <div class="nav-label">Manage</div>
+      <a class="nav-item" href="#"><span class="ic">👛</span>Wallet</a>
+      <a class="nav-item active" href="settings.html"><span class="ic">⚙️</span>Settings</a>
+      <a class="nav-item" href="integrations.html"><span class="ic">🧩</span>Integrations</a>
+      <a class="nav-item" href="team-members.html"><span class="ic">👥</span>Team Members</a>
+    </nav>
+    <div class="side-foot">
+      <a class="side-cta" href="#">▶ Watch tutorial</a>
+      <a class="side-cta primary" href="#">Buy a new Number</a>
+      <a class="side-cta" href="#">☎ Contact Us</a>
+    </div>
+  </aside>
+  <div class="side-scrim" data-drawer-close></div>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="hamburger" data-drawer-open aria-label="Open menu">☰</button>
+      <div class="top-org">
+        <div class="org-name">VARIETY VINTAGE TECHNOLOGIES PRIVATE LIMITED</div>
+        <div class="org-number">+91 9403890373</div>
+      </div>
+      <div class="top-spacer"></div>
+      <a class="live-pill" href="#"><span class="live-dot"></span><span class="lbl">Live Call Dashboard</span></a>
+      <span class="wallet-chip">👛 ₹998.8</span>
+      <button class="icon-btn" data-theme-toggle>🌙</button>
+      <div class="row" style="gap:9px">
+        <span class="avatar">S</span>
+        <div class="top-user"><b>shank</b><span>6360200382</span></div>
+      </div>
+      <a class="btn ghost sm" href="index.html">Logout</a>
+    </header>
+
+    <main class="content stack" style="gap:20px" data-tabset>
+
+      <section class="reveal row between wrap">
+        <div>
+          <h1 class="page-title">⚙️ Settings</h1>
+          <p class="page-sub">Business tags, call behaviour, CRM stages, and field configuration.</p>
+        </div>
+        <select class="input" style="width:280px">
+          <option>+919403890373 · VARIETY VINTAGE TECHNOLOGIES</option>
+          <option>+919403890374 · Sharma Electronics</option>
+        </select>
+      </section>
+
+      <nav class="tabs reveal" aria-label="Settings sections">
+        <button class="tab active" data-tab="biz">Business Management</button>
+        <button class="tab" data-tab="call">Call Settings</button>
+        <button class="tab" data-tab="crm">CRM Settings</button>
+        <button class="tab" data-tab="fields">Custom Fields</button>
+        <button class="tab" data-tab="priority">Priority Order</button>
+      </nav>
+
+      <!-- ── Business Management → Tags ── -->
+      <section data-panel="biz" class="active stack" style="gap:18px">
+        <div class="card card-pad stack" style="gap:14px">
+          <div class="row between wrap">
+            <div>
+              <b style="letter-spacing:.06em">VISIBLE TAGS</b>
+              <div class="small muted">Available for selection when tags are added to contacts</div>
+            </div>
+            <button class="btn sm" data-open="#tag-modal">＋ Create</button>
+          </div>
+          <div class="tbl-wrap">
+            <table class="tbl">
+              <thead><tr><th>Tag ID</th><th>Tag</th><th style="text-align:right">Actions</th></tr></thead>
+              <tbody>
+                <tr><td data-th="Tag ID" class="num muted">2197304</td><td data-th="Tag"><span class="tag-chip" style="background:#f3e8ff;color:#7e22ce">👑 VIP</span></td>
+                  <td data-th="Actions" style="text-align:right"><button class="icon-btn" aria-label="Edit VIP">✏️</button><button class="icon-btn" aria-label="Delete VIP">🗑️</button></td></tr>
+                <tr><td data-th="Tag ID" class="num muted">2197305</td><td data-th="Tag"><span class="tag-chip" style="background:#dbeafe;color:#1d4ed8">New customer</span></td>
+                  <td data-th="Actions" style="text-align:right"><button class="icon-btn" aria-label="Edit New customer">✏️</button><button class="icon-btn" aria-label="Delete New customer">🗑️</button></td></tr>
+                <tr><td data-th="Tag ID" class="num muted">2197306</td><td data-th="Tag"><span class="tag-chip" style="background:#cffafe;color:#0e7490">Call back</span></td>
+                  <td data-th="Actions" style="text-align:right"><button class="icon-btn" aria-label="Edit Call back">✏️</button><button class="icon-btn" aria-label="Delete Call back">🗑️</button></td></tr>
+                <tr><td data-th="Tag ID" class="num muted">2197307</td><td data-th="Tag"><span class="tag-chip" style="background:#dcfce7;color:#15803d">😍 Interested</span></td>
+                  <td data-th="Actions" style="text-align:right"><button class="icon-btn" aria-label="Edit Interested">✏️</button><button class="icon-btn" aria-label="Delete Interested">🗑️</button></td></tr>
+                <tr><td data-th="Tag ID" class="num muted">2197308</td><td data-th="Tag"><span class="tag-chip" style="background:#fee2e2;color:#b91c1c">🚫 No response</span></td>
+                  <td data-th="Actions" style="text-align:right"><button class="icon-btn" aria-label="Edit No response">✏️</button><button class="icon-btn" aria-label="Delete No response">🗑️</button></td></tr>
+                <tr><td data-th="Tag ID" class="num muted">2197309</td><td data-th="Tag"><span class="tag-chip" style="background:#ffedd5;color:#c2410c">🔥 Hot lead</span></td>
+                  <td data-th="Actions" style="text-align:right"><button class="icon-btn" aria-label="Edit Hot lead">✏️</button><button class="icon-btn" aria-label="Delete Hot lead">🗑️</button></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card card-pad stack" style="gap:10px">
+          <b style="letter-spacing:.06em">HIDDEN TAGS</b>
+          <div class="small muted">Won't show during selection. Contacts already tagged keep displaying them.</div>
+          <div class="row wrap mt-1" style="gap:8px">
+            <span class="tag-chip" style="background:var(--paper);color:var(--muted)">missed call</span>
+            <span class="tag-chip" style="background:var(--paper);color:var(--muted)">test111</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Call Settings ── -->
+      <section data-panel="call" class="stack" style="gap:18px">
+        <div class="card card-pad row" style="gap:16px">
+          <div class="grow">
+            <b>Sticky agent</b>
+            <div class="small muted">Calls from a customer always ring their assigned agent first</div>
+            <div class="row mt-2" style="gap:14px">
+              <span class="small muted">If they don't pick up:</span>
+              <span class="chip info">Ring as per ringing order</span>
+              <span class="chip plain">End the call</span>
+            </div>
+          </div>
+          <button class="toggle" role="switch" aria-checked="true" aria-label="Sticky agent"></button>
+        </div>
+
+        <div class="card card-pad row" style="gap:16px">
+          <div class="grow">
+            <b>IVR</b>
+            <div class="small muted">With IVR on, ringing order turns off. Ask support to change your IVR flow.</div>
+          </div>
+          <button class="toggle" role="switch" aria-checked="true" aria-label="IVR"></button>
+        </div>
+
+        <div class="card card-pad row" style="gap:16px">
+          <div class="grow">
+            <b>Call recording</b>
+            <div class="small muted">Automatically record every incoming and outgoing call</div>
+          </div>
+          <button class="toggle" role="switch" aria-checked="true" aria-label="Call recording"></button>
+        </div>
+
+        <div class="card card-pad stack" style="gap:16px" data-tabset>
+          <div class="row between wrap">
+            <div>
+              <b>Configure ringing order</b>
+              <div class="small muted">Arrange who rings first for open and closed hours</div>
+            </div>
+            <div class="subtabs">
+              <button class="subtab active" data-tab="open">Open hours</button>
+              <button class="subtab" data-tab="closed">Closed hours</button>
+            </div>
+          </div>
+
+          <div data-panel="open" class="active stack" style="gap:16px">
+            <div class="ring-group">
+              <span class="ring-no">1</span>
+              <div class="grow">
+                <div class="small muted" style="font-weight:600">Ring first — in parallel</div>
+                <div class="row wrap mt-1" style="gap:8px">
+                  <span class="member-chip">Afsana B2B <span class="x">×</span></span>
+                  <span class="member-chip">Kavitha B2B <span class="x">×</span></span>
+                  <span class="member-chip">Esha B2C <span class="x">×</span></span>
+                  <button class="chip plain">＋ Add member</button>
+                </div>
+              </div>
+            </div>
+            <div class="ring-group">
+              <span class="ring-no">2</span>
+              <div class="grow">
+                <div class="small muted" style="font-weight:600">Then ring</div>
+                <div class="row wrap mt-1" style="gap:8px">
+                  <span class="member-chip">Dilip New <span class="x">×</span></span>
+                  <span class="member-chip">Yash Pawar <span class="x">×</span></span>
+                  <button class="chip plain">＋ Add member</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div data-panel="closed" class="stack" style="gap:16px">
+            <div class="ring-group">
+              <span class="ring-no">1</span>
+              <div class="grow">
+                <div class="small muted" style="font-weight:600">Ring first</div>
+                <div class="row wrap mt-1" style="gap:8px">
+                  <span class="member-chip">shank (owner) <span class="x">×</span></span>
+                  <button class="chip plain">＋ Add member</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="row" style="justify-content:flex-end"><button class="btn sm">Save order</button></div>
+        </div>
+      </section>
+
+      <!-- ── CRM Settings ── -->
+      <section data-panel="crm" class="stack" style="gap:16px">
+        <div class="row between wrap">
+          <div class="subtabs">
+            <button class="subtab active">Lead stage</button>
+            <button class="subtab">Lead group</button>
+          </div>
+          <div class="row" style="gap:8px">
+            <button class="btn ghost sm">＋ Add custom stage</button>
+            <button class="btn ghost sm">＋ Add from template</button>
+            <button class="btn sm">Edit lead stages</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="tbl-wrap">
+            <table class="tbl">
+              <thead><tr><th>Seq</th><th>Lead stage</th><th>Type</th><th>Contacts (6 mo)</th><th>Status</th></tr></thead>
+              <tbody>
+                <tr><td data-th="Seq" class="num muted">01</td><td data-th="Lead stage"><b>🆕 New Inquiry</b></td><td data-th="Type"><span class="chip info">INITIAL</span></td><td data-th="Contacts" class="num">359</td><td data-th="Status"><button class="toggle" role="switch" aria-checked="true" aria-label="New Inquiry active"></button></td></tr>
+                <tr><td data-th="Seq" class="num muted">02</td><td data-th="Lead stage"><b>📄 Quotation Sent</b></td><td data-th="Type" class="muted">NONE</td><td data-th="Contacts" class="num">0</td><td data-th="Status"><button class="toggle" role="switch" aria-checked="true" aria-label="Quotation Sent active"></button></td></tr>
+                <tr><td data-th="Seq" class="num muted">03</td><td data-th="Lead stage"><b>⏳ Awaiting Decision</b></td><td data-th="Type" class="muted">NONE</td><td data-th="Contacts" class="num">334</td><td data-th="Status"><button class="toggle" role="switch" aria-checked="true" aria-label="Awaiting Decision active"></button></td></tr>
+                <tr><td data-th="Seq" class="num muted">04</td><td data-th="Lead stage"><b>✅ Sale Closed</b></td><td data-th="Type"><span class="chip good">FINAL · POSITIVE</span></td><td data-th="Contacts" class="num">2,376</td><td data-th="Status"><button class="toggle" role="switch" aria-checked="true" aria-label="Sale Closed active"></button></td></tr>
+                <tr><td data-th="Seq" class="num muted">05</td><td data-th="Lead stage"><b>❌ Not Interested</b></td><td data-th="Type"><span class="chip bad">FINAL · NEGATIVE</span></td><td data-th="Contacts" class="num">83</td><td data-th="Status"><button class="toggle" role="switch" aria-checked="true" aria-label="Not Interested active"></button></td></tr>
+                <tr><td data-th="Seq" class="num muted">06</td><td data-th="Lead stage"><b>🔮 Future Follow-up</b></td><td data-th="Type" class="muted">NONE</td><td data-th="Contacts" class="num">327</td><td data-th="Status"><button class="toggle" role="switch" aria-checked="true" aria-label="Future Follow-up active"></button></td></tr>
+                <tr><td data-th="Seq" class="num muted">07</td><td data-th="Lead stage"><b>No Response</b></td><td data-th="Type" class="muted">NONE</td><td data-th="Contacts" class="num">1,611</td><td data-th="Status"><button class="toggle" role="switch" aria-checked="true" aria-label="No Response active"></button></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Custom Fields ── -->
+      <section data-panel="fields" class="stack" style="gap:16px">
+        <div class="row" style="justify-content:flex-end">
+          <button class="btn" data-open="#field-modal">＋ Create custom field</button>
+        </div>
+        <div class="empty">
+          <div class="glyph">🗃️</div>
+          <b>No custom fields yet</b>
+          <p class="small" style="max-width:40ch;margin:6px auto 0">Add fields like "GST number" or "City" to capture exactly what your business needs on every contact.</p>
+        </div>
+      </section>
+
+      <!-- ── Priority Order ── -->
+      <section data-panel="priority" class="stack" style="gap:16px">
+        <div class="row" style="justify-content:flex-end"><button class="btn">Set priority fields</button></div>
+        <div class="grid-2">
+          <div class="card card-pad stack" style="gap:6px">
+            <h2 style="font-size:16px">Lead tracking fields</h2>
+            <div class="tbl-wrap">
+              <table class="tbl">
+                <thead><tr><th></th><th>Field</th><th>Status</th></tr></thead>
+                <tbody>
+                  <tr><td><input type="checkbox" aria-label="Select Source"></td><td data-th="Field">Source</td><td><span class="chip info">Static</span></td></tr>
+                  <tr><td><input type="checkbox" aria-label="Select Source Type"></td><td data-th="Field">Source Type</td><td><span class="chip info">Static</span></td></tr>
+                  <tr><td><input type="checkbox" aria-label="Select Product Interested"></td><td data-th="Field">Product Interested</td><td><span class="chip info">Static</span></td></tr>
+                  <tr><td><input type="checkbox" aria-label="Select Deal Value"></td><td data-th="Field">Deal Value</td><td><span class="chip info">Static</span></td></tr>
+                  <tr><td><input type="checkbox" aria-label="Select Lead Group"></td><td data-th="Field">Lead Group</td><td><span class="chip info">Static</span></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="card card-pad stack" style="gap:6px">
+            <h2 style="font-size:16px">Additional fields</h2>
+            <div class="tbl-wrap">
+              <table class="tbl">
+                <thead><tr><th></th><th>Field</th><th>Status</th></tr></thead>
+                <tbody>
+                  <tr><td><input type="checkbox" aria-label="Select Business Name"></td><td data-th="Field">Business Name</td><td><span class="chip info">Static</span></td></tr>
+                  <tr><td><input type="checkbox" aria-label="Select Additional Info"></td><td data-th="Field">Additional Info</td><td><span class="chip info">Static</span></td></tr>
+                  <tr><td><input type="checkbox" aria-label="Select City"></td><td data-th="Field">City</td><td><span class="chip info">Static</span></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<!-- ── Create tag modal ── -->
+<div class="scrim" id="tag-modal">
+  <div class="modal">
+    <div class="row between">
+      <h3>Create new tag</h3>
+      <button class="icon-btn" data-close aria-label="Close">✕</button>
+    </div>
+    <div class="field mt-3"><label>Tag name</label><input class="input" placeholder="Enter tag name"></div>
+    <div class="swatches mt-3">
+      <button class="swatch sel" style="background:#4338ca" aria-label="Indigo"></button>
+      <button class="swatch" style="background:#f87171" aria-label="Coral"></button>
+      <button class="swatch" style="background:#10b981" aria-label="Emerald"></button>
+      <button class="swatch" style="background:#60a5fa" aria-label="Sky"></button>
+      <button class="swatch" style="background:#84cc16" aria-label="Lime"></button>
+      <button class="swatch" style="background:#a78bfa" aria-label="Violet"></button>
+      <button class="swatch" style="background:#eab308" aria-label="Gold"></button>
+      <button class="swatch" style="background:#e879f9" aria-label="Fuchsia"></button>
+      <button class="swatch" style="background:#15803d" aria-label="Forest"></button>
+      <button class="swatch" style="background:#be185d" aria-label="Berry"></button>
+      <button class="swatch" style="background:#f472b6" aria-label="Pink"></button>
+      <button class="swatch" style="background:#ef4444" aria-label="Red"></button>
+      <button class="swatch" style="background:#f97316" aria-label="Orange"></button>
+      <button class="swatch" style="background:#0e7490" aria-label="Teal"></button>
+      <button class="swatch" style="background:#111827" aria-label="Black"></button>
+      <button class="swatch" style="background:#9ca3af" aria-label="Grey"></button>
+    </div>
+    <div class="card card-pad row between mt-3" style="box-shadow:none">
+      <b>Preview</b><span class="tag-chip" style="background:#e0e7ff;color:#4338ca">Tag name</span>
+    </div>
+    <div class="m-actions">
+      <button class="btn ghost" data-close>Cancel</button>
+      <button class="btn" data-close>Add</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Custom field modal ── -->
+<div class="scrim" id="field-modal">
+  <div class="modal">
+    <div class="row between">
+      <h3>Create a custom field</h3>
+      <button class="icon-btn" data-close aria-label="Close">✕</button>
+    </div>
+    <div class="field mt-3"><label>Label</label><input class="input" placeholder="e.g. GST number"></div>
+    <div class="field mt-2"><label>Field type</label>
+      <select class="input"><option>Select</option><option>Text</option><option>Number</option><option>Date</option><option>Dropdown</option><option>Checkbox</option></select></div>
+    <div class="m-actions">
+      <button class="btn ghost" data-close>Cancel</button>
+      <button class="btn" data-close>Create</button>
+    </div>
+  </div>
+</div>
+
+<script src="assets/js/app.js"></script>
+</body>
+</html>
