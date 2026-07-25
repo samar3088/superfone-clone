@@ -45,8 +45,6 @@ const TOP_TABS = [
     { key: 'crm', label: 'CRM Settings' },
     { key: 'integrations', label: 'Integrations' },
     { key: 'notifications', label: 'Notifications' },
-    { key: 'call', label: 'Call Settings', disabled: true },
-    { key: 'automations', label: 'Automations', disabled: true },
     { key: 'webhooks', label: 'Webhooks', disabled: true },
     { key: 'api', label: 'API Keys', disabled: true },
 ];

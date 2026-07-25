@@ -57,6 +57,7 @@ Route::middleware('auth')->group(function () {
 
     // Leads
     Route::get('leads', [LeadController::class, 'index'])->name('leads.index');
+    Route::get('leads/export', [LeadController::class, 'export'])->name('leads.export');
     Route::post('leads/mark-read', [LeadController::class, 'markAllRead'])->name('leads.read');
     Route::patch('leads/{lead}/status', [LeadController::class, 'updateStatus'])->name('leads.status');
 

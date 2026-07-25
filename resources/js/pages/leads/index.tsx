@@ -1,6 +1,14 @@
 import { Head, router } from '@inertiajs/react';
 
 import { Column, DataTable, Paginated } from '@/components/data-table';
+import {
+    DateRangeFilter,
+    ExportLink,
+    FilterRow,
+    Filters,
+    FilterSelect,
+    ResetFilters,
+} from '@/components/table-filters';
 import { Button, Pill } from '@/components/ui-kit';
 import ConsoleLayout from '@/layouts/console-layout';
 
@@ -14,15 +22,29 @@ interface Lead {
     viewed_at: string | null;
     created_at: string;
     assignee: { id: number; name: string } | null;
+    stage: { id: number; name: string; type: string; emoji: string | null } | null;
 }
 
-export default function LeadsIndex({
-    leads,
-    filters,
-}: {
+interface Stage {
+    id: number;
+    name: string;
+    emoji: string | null;
+    type: string;
+}
+
+interface Props {
     leads: Paginated<Lead>;
-    filters: Record<string, string | undefined>;
-}) {
+    filters: Filters;
+    stages: Stage[];
+    members: { id: number; name: string }[];
+}
+
+/** Everything the Reset button clears. */
+const FILTER_KEYS = ['search', 'member', 'stage', 'date_from', 'date_to', 'source', 'unread'];
+
+export default function LeadsIndex({ leads, filters, stages, members }: Props) {
+    const ctx = { filters, url: '/leads' };
+
     const columns: Column<Lead>[] = [
         {
             key: 'name',
@@ -63,9 +85,22 @@ export default function LeadsIndex({
                 l.assignee ? l.assignee.name : <span className="text-muted-foreground">Unassigned</span>,
         },
         {
+            /*
+                Shows the CRM stage rather than read/unread, so it matches the
+                Status filter beside it. Unread is still visible — it is the red
+                dot against the lead's name.
+            */
             key: 'status',
             header: 'Status',
-            cell: (l) => <Pill tone={l.viewed_at ? 'neutral' : 'bad'}>{l.viewed_at ? 'Seen' : 'New'}</Pill>,
+            cell: (l) =>
+                l.stage ? (
+                    <Pill tone={stageTone(l.stage.type)}>
+                        {l.stage.emoji ? `${l.stage.emoji} ` : ''}
+                        {l.stage.name}
+                    </Pill>
+                ) : (
+                    <span className="text-muted-foreground">—</span>
+                ),
         },
     ];
 
@@ -87,9 +122,49 @@ export default function LeadsIndex({
                 filters={filters}
                 url="/leads"
                 searchPlaceholder="Search name, mobile or campaign…"
-                emptyTitle="No leads yet"
-                emptyHint="Once the Facebook integration is connected, campaign leads will land here automatically and the bell will light up."
+                emptyTitle="No leads match"
+                emptyHint="Try widening the date range or clearing the filters."
+                toolbar={
+                    <FilterRow>
+                        {members.length > 0 && (
+                            <FilterSelect
+                                ctx={ctx}
+                                name="member"
+                                label="All members"
+                                options={[
+                                    { value: 'unassigned', label: 'Unassigned' },
+                                    ...members.map((m) => ({ value: String(m.id), label: m.name })),
+                                ]}
+                            />
+                        )}
+
+                        <FilterSelect
+                            ctx={ctx}
+                            name="stage"
+                            label="All statuses"
+                            options={stages.map((s) => ({
+                                value: String(s.id),
+                                label: s.emoji ? `${s.emoji} ${s.name}` : s.name,
+                            }))}
+                        />
+
+                        <DateRangeFilter ctx={ctx} />
+
+                        <ResetFilters ctx={ctx} keys={FILTER_KEYS} />
+
+                        <span className="ml-auto shrink-0">
+                            <ExportLink ctx={ctx} path="/leads/export" />
+                        </span>
+                    </FilterRow>
+                }
             />
         </ConsoleLayout>
     );
+}
+
+function stageTone(type: string): 'good' | 'warn' | 'bad' | 'neutral' {
+    if (type === 'FINAL_POSITIVE') return 'good';
+    if (type === 'FINAL_NEGATIVE') return 'bad';
+    if (type === 'INITIAL') return 'warn';
+    return 'neutral';
 }

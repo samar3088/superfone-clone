@@ -1,7 +1,14 @@
 import { Head, Link } from '@inertiajs/react';
 
 import { Column, DataTable, Paginated } from '@/components/data-table';
-import { Button } from '@/components/ui-kit';
+import {
+    DateRangeFilter,
+    ExportLink,
+    FilterRow,
+    Filters,
+    FilterSelect,
+    ResetFilters,
+} from '@/components/table-filters';
 import ConsoleLayout from '@/layouts/console-layout';
 
 interface Customer {
@@ -14,13 +21,20 @@ interface Customer {
     last_activity_at: string | null;
 }
 
+/** Everything the Reset button clears. */
+const FILTER_KEYS = ['search', 'member', 'leads', 'date_from', 'date_to'];
+
 export default function CustomersIndex({
     customers,
     filters,
+    members,
 }: {
     customers: Paginated<Customer>;
-    filters: Record<string, string | undefined>;
+    filters: Filters;
+    members: { id: number; name: string }[];
 }) {
+    const ctx = { filters, url: '/customers' };
+
     const columns: Column<Customer>[] = [
         {
             key: 'name',
@@ -61,11 +75,6 @@ export default function CustomersIndex({
         <ConsoleLayout
             title="Customers"
             description="One record per person. The same person enquiring twice keeps one customer and two leads."
-            actions={
-                <a href="/customers/export">
-                    <Button variant="ghost">Export CSV</Button>
-                </a>
-            }
         >
             <Head title="Customers" />
             <DataTable
@@ -74,8 +83,36 @@ export default function CustomersIndex({
                 filters={filters}
                 url="/customers"
                 searchPlaceholder="Search name, mobile or email…"
-                emptyTitle="No customers yet"
-                emptyHint="Customers are created automatically as leads arrive."
+                emptyTitle="No customers match"
+                emptyHint="Customers are created automatically as leads arrive. Try clearing the filters."
+                toolbar={
+                    <FilterRow>
+                        <FilterSelect
+                            ctx={ctx}
+                            name="member"
+                            label="All members"
+                            options={members.map((m) => ({ value: String(m.id), label: m.name }))}
+                        />
+
+                        <FilterSelect
+                            ctx={ctx}
+                            name="leads"
+                            label="All customers"
+                            options={[
+                                { value: 'with', label: 'With leads' },
+                                { value: 'without', label: 'Without leads' },
+                            ]}
+                        />
+
+                        <DateRangeFilter ctx={ctx} />
+
+                        <ResetFilters ctx={ctx} keys={FILTER_KEYS} />
+
+                        <span className="ml-auto shrink-0">
+                            <ExportLink ctx={ctx} path="/customers/export" />
+                        </span>
+                    </FilterRow>
+                }
             />
         </ConsoleLayout>
     );

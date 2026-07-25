@@ -2,26 +2,73 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Crm\LeadFilterRequest;
 use App\Models\Lead;
 use App\Models\LeadGroup;
 use App\Models\LeadStage;
+use App\Models\User;
 use App\Services\Crm\LeadService;
 use App\Services\Support\DataTableService;
+use App\Services\Support\ExportService;
+use App\Support\Roles;
 use Illuminate\Contracts\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class LeadController extends Controller
 {
-    public function __construct(private LeadService $leads) {}
+    /** Filter keys the screen owns; the export reads the same set. */
+    private const FILTER_KEYS = ['search', 'member', 'stage', 'source', 'date_from', 'date_to', 'unread'];
 
-    public function index(Request $request): Response
+    public function __construct(
+        private LeadService $leads,
+        private ExportService $exports,
+    ) {}
+
+    public function index(LeadFilterRequest $request): Response
+    {
+        return Inertia::render('leads/index', [
+            'leads' => $this->table($request)->paginate($request),
+            'filters' => $request->only([...self::FILTER_KEYS, 'sort', 'direction', 'per_page']),
+            'stages' => LeadStage::where('is_active', true)->orderBy('sequence')
+                ->get(['id', 'name', 'emoji', 'type']),
+            'groups' => LeadGroup::where('is_active', true)->get(['id', 'name']),
+            // Members only ever see their own leads, so the picker would be a
+            // list of one — it is owner-only.
+            'members' => $request->user()->isOwner()
+                ? User::role([Roles::OWNER, Roles::MEMBER])->orderBy('name')->get(['id', 'name'])
+                : [],
+        ]);
+    }
+
+    public function export(LeadFilterRequest $request): StreamedResponse
+    {
+        return $this->exports->streamCsv(
+            $this->table($request)->query($request),
+            ['Lead', 'Mobile', 'Email', 'Source', 'Campaign', 'Status', 'Assigned to', 'Read', 'Received'],
+            fn (Lead $l) => [
+                $l->name,
+                $l->mobile,
+                $l->email ?? '',
+                $l->source,
+                $l->campaign ?? '',
+                $l->stage?->name ?? '',
+                $l->assignee?->name ?? 'Unassigned',
+                $l->viewed_at ? 'Yes' : 'No',
+                $l->created_at->toDateTimeString(),
+            ],
+            'leads-'.now()->format('Y-m-d-Hi').'.csv',
+        );
+    }
+
+    private function table(Request $request): DataTableService
     {
         $user = $request->user();
 
-        $leads = DataTableService::for(
+        return DataTableService::for(
             Lead::query()
                 ->with(['assignee:id,name', 'stage:id,name,type,emoji', 'customer:id,name'])
                 // Members only ever see the leads assigned to them.
@@ -34,15 +81,17 @@ class LeadController extends Controller
             ->filter('source', fn (Builder $q, $v) => $q->where('source', $v))
             ->filter('stage', fn (Builder $q, $v) => $q->where('lead_stage_id', $v))
             ->filter('unread', fn (Builder $q) => $q->whereNull('viewed_at'))
-            ->defaultSort('id', 'desc')
-            ->paginate($request);
-
-        return Inertia::render('leads/index', [
-            'leads' => $leads,
-            'filters' => $request->only(['search', 'source', 'stage', 'unread', 'sort', 'direction']),
-            'stages' => LeadStage::where('is_active', true)->orderBy('sequence')->get(['id', 'name', 'emoji', 'type']),
-            'groups' => LeadGroup::where('is_active', true)->get(['id', 'name']),
-        ]);
+            // A member filter would let a member widen their own scope, so it
+            // is ignored for anyone but an owner. "unassigned" is a real state
+            // worth filtering on, hence the sentinel.
+            ->filter('member', fn (Builder $q, $v) => $user->isOwner()
+                ? ($v === 'unassigned' ? $q->whereNull('assigned_to') : $q->where('assigned_to', $v))
+                : $q)
+            // whereDate on the end so a lead created at 18:40 still falls
+            // inside a range ending on its own date.
+            ->filter('date_from', fn (Builder $q, $v) => $q->whereDate('created_at', '>=', $v))
+            ->filter('date_to', fn (Builder $q, $v) => $q->whereDate('created_at', '<=', $v))
+            ->defaultSort('id', 'desc');
     }
 
     /**

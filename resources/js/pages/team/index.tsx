@@ -2,6 +2,7 @@ import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { FormEvent, useState } from 'react';
 
 import { Column, DataTable, Paginated } from '@/components/data-table';
+import { ExportLink, FilterRow, Filters, FilterSelect, ResetFilters } from '@/components/table-filters';
 import { Button, Field, Modal, Pill, inputClass } from '@/components/ui-kit';
 import ConsoleLayout from '@/layouts/console-layout';
 
@@ -18,12 +19,16 @@ interface Member {
 
 interface Props {
     members: Paginated<Member>;
-    filters: Record<string, string | undefined>;
+    filters: Filters;
     roles: string[];
 }
 
+/** Everything the Reset button clears. */
+const FILTER_KEYS = ['search', 'status', 'role'];
+
 export default function TeamIndex({ members, filters, roles }: Props) {
     const { auth } = usePage<{ auth: { user: { id: number; is_owner: boolean } } }>().props;
+    const ctx = { filters, url: '/team' };
     const [editing, setEditing] = useState<Member | null>(null);
     const [creating, setCreating] = useState(false);
     const [confirmDelete, setConfirmDelete] = useState<Member | null>(null);
@@ -98,26 +103,12 @@ export default function TeamIndex({ members, filters, roles }: Props) {
         },
     ];
 
-    const exportUrl = () => {
-        const params = new URLSearchParams(
-            Object.entries(filters).filter(([, v]) => v) as [string, string][]
-        );
-        return `/team/export${params.toString() ? `?${params}` : ''}`;
-    };
-
     return (
         <ConsoleLayout
             title="Team Members"
             description="Add staff, set what they can reach, and keep the roster current."
             actions={
-                auth.user.is_owner && (
-                    <>
-                        <a href={exportUrl()}>
-                            <Button variant="ghost">Export CSV</Button>
-                        </a>
-                        <Button onClick={() => setCreating(true)}>＋ Add member</Button>
-                    </>
-                )
+                auth.user.is_owner && <Button onClick={() => setCreating(true)}>＋ Add member</Button>
             }
         >
             <Head title="Team Members" />
@@ -131,43 +122,33 @@ export default function TeamIndex({ members, filters, roles }: Props) {
                 emptyTitle="No team members match"
                 emptyHint="Try a different search, or add your first member."
                 toolbar={
-                    <>
-                        <select
-                            value={filters.status ?? ''}
-                            onChange={(e) =>
-                                router.get(
-                                    '/team',
-                                    { ...filters, status: e.target.value || undefined, page: undefined },
-                                    { preserveState: true, replace: true }
-                                )
-                            }
-                            aria-label="Filter by status"
-                            className={`${inputClass} w-auto py-2`}
-                        >
-                            <option value="">All statuses</option>
-                            <option value="active">Active</option>
-                            <option value="inactive">Inactive</option>
-                        </select>
-                        <select
-                            value={filters.role ?? ''}
-                            onChange={(e) =>
-                                router.get(
-                                    '/team',
-                                    { ...filters, role: e.target.value || undefined, page: undefined },
-                                    { preserveState: true, replace: true }
-                                )
-                            }
-                            aria-label="Filter by role"
-                            className={`${inputClass} w-auto py-2 capitalize`}
-                        >
-                            <option value="">All roles</option>
-                            {roles.map((r) => (
-                                <option key={r} value={r} className="capitalize">
-                                    {r}
-                                </option>
-                            ))}
-                        </select>
-                    </>
+                    <FilterRow>
+                        <FilterSelect
+                            ctx={ctx}
+                            name="status"
+                            label="All statuses"
+                            options={[
+                                { value: 'active', label: 'Active' },
+                                { value: 'inactive', label: 'Inactive' },
+                            ]}
+                        />
+
+                        <FilterSelect
+                            ctx={ctx}
+                            name="role"
+                            label="All roles"
+                            className="capitalize"
+                            options={roles.map((r) => ({ value: r, label: r }))}
+                        />
+
+                        <ResetFilters ctx={ctx} keys={FILTER_KEYS} />
+
+                        {auth.user.is_owner && (
+                            <span className="ml-auto shrink-0">
+                                <ExportLink ctx={ctx} path="/team/export" />
+                            </span>
+                        )}
+                    </FilterRow>
                 }
             />
 

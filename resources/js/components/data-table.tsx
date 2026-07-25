@@ -74,8 +74,13 @@ export function DataTable<T extends { id: number }>({
 
     return (
         <div className="space-y-4">
-            <div className="flex flex-wrap items-center gap-3">
-                <div className="relative min-w-[220px] flex-1 sm:max-w-xs">
+            {/*
+                One row, scrolling sideways when it runs out of width. Wrapping
+                pushed filters onto a second line and made the toolbar look
+                like two unrelated groups of controls.
+            */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-0.5">
+                <div className="relative w-56 shrink-0">
                     <svg
                         className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
                         viewBox="0 0 24 24"
@@ -93,7 +98,7 @@ export function DataTable<T extends { id: number }>({
                         onChange={(e) => setSearch(e.target.value)}
                         placeholder={searchPlaceholder}
                         aria-label={searchPlaceholder}
-                        className="w-full rounded-lg border border-input bg-card py-2 pl-9 pr-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+                        className="h-9 w-full rounded-lg border border-input bg-card pl-9 pr-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
                     />
                 </div>
                 {toolbar}
