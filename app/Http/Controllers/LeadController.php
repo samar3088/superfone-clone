@@ -22,7 +22,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 class LeadController extends Controller
 {
     /** Filter keys the screen owns; the export reads the same set. */
-    private const FILTER_KEYS = ['search', 'member', 'stage', 'source', 'date_from', 'date_to', 'unread'];
+    private const FILTER_KEYS = ['search', 'member', 'stage', 'source', 'date_from', 'date_to', 'unread', 'kind'];
 
     public function __construct(
         private LeadService $leads,
@@ -49,13 +49,14 @@ class LeadController extends Controller
     {
         return $this->exports->streamCsv(
             $this->table($request)->query($request),
-            ['Lead', 'Mobile', 'Email', 'Source', 'Campaign', 'Status', 'Assigned to', 'Read', 'Received'],
+            ['Lead', 'Mobile', 'Email', 'Source', 'Campaign', 'Kind', 'Status', 'Assigned to', 'Read', 'Received'],
             fn (Lead $l) => [
                 $l->name,
                 $l->mobile,
                 $l->email ?? '',
                 $l->source,
                 $l->campaign ?? '',
+                $l->is_existing ? 'Repeat' : 'Fresh',
                 $l->stage?->name ?? '',
                 $l->assignee?->name ?? 'Unassigned',
                 $l->viewed_at ? 'Yes' : 'No',
@@ -76,12 +77,14 @@ class LeadController extends Controller
                 ->when(! $user->isOwner(), fn (Builder $q) => $q->where('assigned_to', $user->id))
         )
             ->select(['id', 'customer_id', 'name', 'mobile', 'email', 'source', 'campaign',
-                'lead_stage_id', 'assigned_to', 'viewed_at', 'version', 'created_at'])
+                'lead_stage_id', 'assigned_to', 'viewed_at', 'version', 'created_at',
+                'is_existing', 'duplicate_of_id'])
             ->searchable(['name', 'mobile', 'email', 'campaign'])
             ->sortable(['name', 'created_at', 'source'])
             ->filter('source', fn (Builder $q, $v) => $q->where('source', $v))
             ->filter('stage', fn (Builder $q, $v) => $q->whereIn('lead_stage_id', FilterList::ids($v)))
             ->filter('unread', fn (Builder $q) => $q->whereNull('viewed_at'))
+            ->filter('kind', fn (Builder $q, $v) => $q->where('is_existing', $v === 'existing'))
             /*
              | Ignored for anyone but an owner — members are already scoped to
              | their own leads, and honouring this would let a hand-edited URL

@@ -3,7 +3,9 @@
 namespace App\Console\Commands;
 
 use App\Models\Integration;
+use App\Models\Lead;
 use App\Models\LeadStage;
+use App\Services\Crm\DuplicateLeadService;
 use App\Services\Crm\FacebookSyncService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
@@ -30,7 +32,7 @@ class BackfillFacebookLeads extends Command
 
     protected $description = 'Import historical Facebook leads (run once at go-live)';
 
-    public function handle(FacebookSyncService $sync): int
+    public function handle(FacebookSyncService $sync, DuplicateLeadService $duplicates): int
     {
         $integrations = Integration::query()
             ->where('provider', 'facebook')
@@ -95,6 +97,25 @@ class BackfillFacebookLeads extends Command
         }
 
         $this->info("\nDone. Imported {$totals['imported']}, skipped {$totals['skipped']} already present.");
+
+        /*
+         | Graph hands leads back newest-first, so while importing, a lead's
+         | earlier siblings may not exist yet and its repeat flag comes out
+         | wrong. Settle it now that the whole history is present.
+         */
+        if ($totals['imported'] > 0) {
+            $this->line("\nRe-checking which of those repeat an earlier enquiry…");
+
+            $changed = $duplicates->repairFor(
+                Lead::whereIn('integration_id', $integrations->modelKeys())
+                    ->distinct()
+                    ->pluck('customer_id')
+                    ->filter()
+                    ->all()
+            );
+
+            $this->info("Corrected {$changed} lead(s).");
+        }
 
         return self::SUCCESS;
     }

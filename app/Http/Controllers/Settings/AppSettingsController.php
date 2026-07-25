@@ -23,17 +23,42 @@ class AppSettingsController extends Controller
 
     public function updateNotifications(UpdateNotificationSettingsRequest $request): RedirectResponse
     {
-        $enabled = $request->boolean('new_lead_email');
+        $this->guard();
 
-        $this->settings->set(Settings::NEW_LEAD_EMAIL, $enabled);
+        if ($request->has('new_lead_email')) {
+            $enabled = $request->boolean('new_lead_email');
 
-        activity('settings')
-            ->causedBy($request->user())
-            ->log($enabled ? 'Enabled new-lead emails' : 'Disabled new-lead emails');
+            $this->settings->set(Settings::NEW_LEAD_EMAIL, $enabled);
 
-        return back()->with('success', $enabled
-            ? 'Members will now be emailed when a lead is assigned to them.'
-            : 'New-lead emails are off.');
+            activity('settings')
+                ->causedBy($request->user())
+                ->log($enabled ? 'Enabled new-lead emails' : 'Disabled new-lead emails');
+
+            return back()->with('success', $enabled
+                ? 'Members will now be emailed when a lead is assigned to them.'
+                : 'New-lead emails are off.');
+        }
+
+        if ($request->has('duplicate_window_days')) {
+            $days = (int) $request->validated('duplicate_window_days');
+
+            $this->settings->set(Settings::DUPLICATE_WINDOW_DAYS, $days);
+
+            activity('settings')
+                ->causedBy($request->user())
+                ->log("Set the repeat-enquiry window to {$days} day(s)");
+
+            /*
+             | Existing leads keep the verdict they were given, so changing the
+             | rule does not silently rewrite history. leads:repair-duplicates
+             | re-judges them when that is actually wanted.
+             */
+            return back()->with('success', $days === 0
+                ? 'Repeat detection is off. New leads will all count as fresh.'
+                : "Repeat window set to {$days} day(s). Run leads:repair-duplicates to re-check existing leads.");
+        }
+
+        return back();
     }
 
     /**

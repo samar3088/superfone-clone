@@ -6,6 +6,7 @@ import {
     FilterForm,
     Filters,
     FilterSearch,
+    FilterSelect,
     MultiSelect,
 } from '@/components/table-filters';
 import { Button, Pill } from '@/components/ui-kit';
@@ -22,6 +23,7 @@ interface Lead {
     created_at: string;
     assignee: { id: number; name: string } | null;
     stage: { id: number; name: string; type: string; emoji: string | null } | null;
+    is_existing: boolean;
 }
 
 interface Stage {
@@ -39,7 +41,7 @@ interface Props {
 }
 
 /** Everything the Reset button clears. */
-const FILTER_KEYS = ['search', 'member', 'stage', 'date_from', 'date_to', 'source', 'unread'];
+const FILTER_KEYS = ['search', 'member', 'stage', 'date_from', 'date_to', 'source', 'unread', 'kind'];
 
 export default function LeadsIndex({ leads, filters, stages, members }: Props) {
     const columns: Column<Lead>[] = [
@@ -57,7 +59,19 @@ export default function LeadsIndex({ leads, filters, stages, members }: Props) {
                         />
                     )}
                     <div className="min-w-0">
-                        <p className={`truncate ${l.viewed_at ? 'font-medium' : 'font-bold'}`}>{l.name}</p>
+                        <p className={`flex items-center gap-2 truncate ${l.viewed_at ? 'font-medium' : 'font-bold'}`}>
+                            {l.name}
+                            {/* They have enquired on this campaign before. */}
+                            {l.is_existing && (
+                                <span
+                                    className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide"
+                                    style={{ background: 'var(--warn-soft)', color: 'var(--warn)' }}
+                                    title="Repeat enquiry on this campaign"
+                                >
+                                    Repeat
+                                </span>
+                            )}
+                        </p>
                         {l.email && <p className="truncate text-xs text-muted-foreground">{l.email}</p>}
                     </div>
                 </div>
@@ -150,6 +164,15 @@ export default function LeadsIndex({ leads, filters, stages, members }: Props) {
                                 value: String(s.id),
                                 label: s.emoji ? `${s.emoji} ${s.name}` : s.name,
                             }))}
+                        />
+
+                        <FilterSelect
+                            name="kind"
+                            label="Fresh & repeat"
+                            options={[
+                                { value: 'fresh', label: 'Fresh only' },
+                                { value: 'existing', label: 'Repeat only' },
+                            ]}
                         />
 
                         <DateRangeFilter />

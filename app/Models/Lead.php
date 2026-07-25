@@ -20,6 +20,7 @@ class Lead extends Model
         'customer_id', 'name', 'mobile', 'email', 'source', 'campaign',
         'integration_id', 'lead_stage_id', 'lead_group_id', 'custom_data',
         'assigned_to', 'viewed_at', 'version', 'last_updated_by',
+        'is_existing', 'duplicate_of_id',
     ];
 
     protected function casts(): array
@@ -27,12 +28,19 @@ class Lead extends Model
         return [
             'viewed_at' => 'datetime',
             'custom_data' => 'array',
+            'is_existing' => 'boolean',
         ];
     }
 
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);
+    }
+
+    /** The earlier enquiry this one repeats, when it is a repeat. */
+    public function duplicateOf(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'duplicate_of_id');
     }
 
     public function assignee(): BelongsTo

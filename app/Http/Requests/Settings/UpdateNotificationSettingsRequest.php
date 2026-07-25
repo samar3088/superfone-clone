@@ -15,7 +15,10 @@ class UpdateNotificationSettingsRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'new_lead_email' => ['required', 'boolean'],
+            'new_lead_email' => ['nullable', 'boolean'],
+            // 0 turns repeat detection off entirely; the cap stops a typo
+            // making every enquiry a repeat forever.
+            'duplicate_window_days' => ['nullable', 'integer', 'min:0', 'max:365'],
         ];
     }
 }

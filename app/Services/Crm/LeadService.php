@@ -19,6 +19,7 @@ class LeadService
     public function __construct(
         private CustomerService $customers,
         private SettingsService $settings,
+        private DuplicateLeadService $duplicates,
     ) {}
 
     /**
@@ -74,9 +75,19 @@ class LeadService
              | happened to import it — otherwise a backfill would stamp years
              | of history as arriving today and wreck every report.
              */
-            if (! empty($payload['created_time'])) {
-                $lead->created_at = Carbon::parse($payload['created_time']);
-            }
+            $arrivedAt = ! empty($payload['created_time'])
+                ? Carbon::parse($payload['created_time'])
+                : now();
+
+            $lead->created_at = $arrivedAt;
+
+            // Does this repeat an enquiry the same person already made on this
+            // same campaign? Judged against the arrival time, not the import
+            // time, so a backfill reaches the same verdict.
+            $original = $this->duplicates->findOriginal($customer, $integration->id, $arrivedAt);
+
+            $lead->is_existing = $original !== null;
+            $lead->duplicate_of_id = $original?->id;
 
             $lead->save();
 

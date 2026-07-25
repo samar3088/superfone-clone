@@ -58,6 +58,10 @@ class SettingsController extends Controller
                 'new_lead_email' => $this->settings->boolean(Settings::NEW_LEAD_EMAIL),
                 // Only whether a token exists — never the token itself.
                 'facebook_token_set' => $this->settings->has(Settings::FACEBOOK_TOKEN),
+                'duplicate_window_days' => (int) $this->settings->get(
+                    Settings::DUPLICATE_WINDOW_DAYS,
+                    Settings::DEFAULT_DUPLICATE_WINDOW_DAYS,
+                ),
             ],
         ]);
     }

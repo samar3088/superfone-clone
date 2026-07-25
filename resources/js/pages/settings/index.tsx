@@ -40,6 +40,7 @@ interface AppSettings {
     new_lead_email: boolean;
     /** Whether a token is stored. The value itself never reaches the browser. */
     facebook_token_set: boolean;
+    duplicate_window_days: number;
 }
 
 const TOP_TABS = [
@@ -98,6 +99,7 @@ function NotificationsTab({ settings }: { settings: AppSettings }) {
     return (
         <div className="max-w-2xl space-y-6">
             <NewLeadEmailCard enabled={settings.new_lead_email} />
+            <RepeatWindowCard days={settings.duplicate_window_days} />
             <FacebookTokenCard isSet={settings.facebook_token_set} />
         </div>
     );
@@ -143,6 +145,49 @@ function NewLeadEmailCard({ enabled }: { enabled: boolean }) {
                 Off by default. A busy campaign can produce thousands of leads a
                 day — turn this on only once you are happy with that volume
                 landing in inboxes. Historical imports never send email.
+            </p>
+        </section>
+    );
+}
+
+function RepeatWindowCard({ days }: { days: number }) {
+    const form = useForm({ duplicate_window_days: days });
+
+    function submit(e: FormEvent) {
+        e.preventDefault();
+        form.put('/settings/notifications', { preserveScroll: true });
+    }
+
+    return (
+        <section className="rounded-xl border border-border bg-card p-6">
+            <h2 className="font-display text-lg font-bold">Repeat enquiry window</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+                If the same person fills in the same campaign form again within this
+                many days, the second one is marked a repeat. A different campaign is
+                always a fresh lead, and so is anyone coming back after their earlier
+                enquiry was won or lost.
+            </p>
+
+            <form onSubmit={submit} className="mt-5 flex flex-wrap items-end gap-3">
+                <Field label="Days" error={form.errors.duplicate_window_days}>
+                    <input
+                        type="number"
+                        min={0}
+                        max={365}
+                        className={`${inputClass} w-28`}
+                        value={form.data.duplicate_window_days}
+                        onChange={(e) => form.setData('duplicate_window_days', Number(e.target.value))}
+                    />
+                </Field>
+                <Button type="submit" disabled={form.processing || form.data.duplicate_window_days === days}>
+                    Save
+                </Button>
+            </form>
+
+            <p className="mt-4 text-sm text-muted-foreground">
+                Zero turns repeat detection off. Changing this does not re-judge leads
+                already in the system — that is a deliberate one-off, run with{' '}
+                <code className="rounded bg-muted px-1.5 py-0.5 text-xs">leads:repair-duplicates</code>.
             </p>
         </section>
     );

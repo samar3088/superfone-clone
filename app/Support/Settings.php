@@ -17,6 +17,17 @@ class Settings
      */
     public const NEW_LEAD_EMAIL = 'notifications.new_lead_email';
 
+    /**
+     * How many days a repeat enquiry in the same campaign counts as a repeat.
+     *
+     * Beyond it, the same person filling the same form again is treated as a
+     * fresh enquiry — six months later is genuinely new business, not a
+     * duplicate. Two days by the client's instruction.
+     */
+    public const DUPLICATE_WINDOW_DAYS = 'leads.duplicate_window_days';
+
+    public const DEFAULT_DUPLICATE_WINDOW_DAYS = 2;
+
     /** Encrypted at rest — never rendered back to the browser. */
     public const ENCRYPTED = [
         self::FACEBOOK_TOKEN,

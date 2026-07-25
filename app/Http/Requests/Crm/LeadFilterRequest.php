@@ -37,6 +37,7 @@ class LeadFilterRequest extends FormRequest
             'date_from' => ['nullable', 'date_format:Y-m-d'],
             'date_to' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:date_from'],
             'unread' => ['nullable', 'in:1,0,true,false'],
+            'kind' => ['nullable', 'in:fresh,existing'],
             'sort' => ['nullable', 'string', 'max:40'],
             'direction' => ['nullable', 'in:asc,desc'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:200'],
