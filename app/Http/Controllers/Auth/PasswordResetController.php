@@ -63,6 +63,8 @@ class PasswordResetController extends Controller
         $user->forceFill([
             'password' => Hash::make($request->validated('password')),
             'mobile_verified_at' => now(),
+            // Choosing their own password clears any emailed temporary one.
+            'must_reset_password' => false,
         ])->save();
 
         activity('auth')->performedOn($user)->log('Password reset via OTP');

@@ -2,6 +2,7 @@
 
 namespace App\Services\Team;
 
+use App\Mail\MemberWelcomeMail;
 use App\Models\User;
 use App\Services\Support\DataTableService;
 use App\Support\Roles;
@@ -10,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
 
 class MemberService
@@ -37,23 +39,64 @@ class MemberService
             ->defaultSort('id', 'desc');
     }
 
-    public function create(array $data): User
+    /**
+     * Create a member and email them their way in.
+     *
+     * Members normally sign in with a one-time code, but a temporary password
+     * is issued too so the welcome email carries something they can act on
+     * immediately. It is single-use in practice: `must_reset_password` forces
+     * them to choose their own the first time they use it, which stops the
+     * emailed one lingering in an inbox as a working credential.
+     */
+    public function create(array $data, ?User $actor = null): User
     {
-        return DB::transaction(function () use ($data) {
+        [$user, $temporaryPassword] = DB::transaction(function () use ($data) {
+            $temporary = $this->temporaryPassword();
+
             $user = User::create([
                 'name' => $data['name'],
                 'email' => $data['email'],
                 'mobile' => $data['mobile'],
                 'is_active' => $data['is_active'] ?? true,
-                // Members sign in with an OTP; a password is optional and set
-                // by them later from their own profile.
-                'password' => ! empty($data['password']) ? Hash::make($data['password']) : null,
+                'password' => Hash::make($data['password'] ?? $temporary),
+                // An owner who typed a password has chosen it deliberately;
+                // only our generated one has to be replaced.
+                'must_reset_password' => empty($data['password']),
             ]);
 
             $user->syncRoles([$data['role'] ?? Roles::MEMBER]);
 
-            return $user;
+            return [$user, empty($data['password']) ? $temporary : $data['password']];
         });
+
+        /*
+         | Queued, and dispatched after the transaction commits — a mail worker
+         | picking the job up mid-transaction would not find the user yet.
+         */
+        Mail::to($user->email)->queue(
+            new MemberWelcomeMail($user, $temporaryPassword, $actor?->name ?? config('company.name'))
+        );
+
+        return $user;
+    }
+
+    /**
+     * Readable but not guessable: mixed case and digits, no ambiguous
+     * characters, since someone will be retyping this from an email.
+     */
+    private function temporaryPassword(): string
+    {
+        $alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+
+        $password = '';
+        for ($i = 0; $i < 12; $i++) {
+            $password .= $alphabet[random_int(0, strlen($alphabet) - 1)];
+        }
+
+        // Password::min(8)->letters()->numbers() must hold for the reset that follows.
+        return preg_match('/[a-zA-Z]/', $password) && preg_match('/\d/', $password)
+            ? $password
+            : $this->temporaryPassword();
     }
 
     public function update(User $member, array $data): User

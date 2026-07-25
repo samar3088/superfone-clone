@@ -36,9 +36,12 @@ class MemberController extends Controller
 
     public function store(StoreMemberRequest $request): RedirectResponse
     {
-        $member = $this->members->create($request->validated());
+        $member = $this->members->create($request->validated(), $request->user());
 
-        return back()->with('success', "{$member->name} has been added to the team.");
+        return back()->with(
+            'success',
+            "{$member->name} has been added. Their sign-in details are on the way to {$member->email}."
+        );
     }
 
     public function update(UpdateMemberRequest $request, User $member): RedirectResponse

@@ -7,6 +7,7 @@ use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\LeadController;
+use App\Http\Controllers\Settings\AppSettingsController;
 use App\Http\Controllers\Settings\CrmSettingsController;
 use App\Http\Controllers\Settings\IntegrationController;
 use App\Http\Controllers\Settings\SettingsController;
@@ -100,6 +101,11 @@ Route::middleware('auth')->group(function () {
         Route::delete('custom-fields/{field}', [CrmSettingsController::class, 'destroyField'])->name('fields.destroy');
 
         Route::put('field-priority', [CrmSettingsController::class, 'saveFieldPriority'])->name('priority.save');
+
+        // Notifications + stored credentials
+        Route::put('notifications', [AppSettingsController::class, 'updateNotifications'])->name('notifications.save');
+        Route::put('facebook-token', [AppSettingsController::class, 'updateFacebookToken'])->name('fb.token.save');
+        Route::delete('facebook-token', [AppSettingsController::class, 'clearFacebookToken'])->name('fb.token.clear');
 
         // Integrations → Facebook. Static segments sit above {integration}.
         Route::get('integrations/facebook/pages', [IntegrationController::class, 'facebookPages'])->name('fb.pages');

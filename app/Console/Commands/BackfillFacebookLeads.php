@@ -60,6 +60,7 @@ class BackfillFacebookLeads extends Command
             ['Stage', $stageId ? LeadStage::find($stageId)->name : 'the integration default'],
             ['Assign to members', $assign ? 'yes' : 'no — left unassigned'],
             ['Mark as read', $markRead ? 'yes' : 'no — will raise the bell'],
+            ['Email members', 'no — suppressed for historical imports'],
         ]);
 
         if (! $this->option('force') && ! $this->confirm('This can import thousands of leads. Continue?', false)) {
@@ -78,6 +79,9 @@ class BackfillFacebookLeads extends Command
                     'assign' => $assign,
                     'mark_read' => $markRead,
                     'max_pages' => (int) $this->option('pages'),
+                    // Historical enquiries must never trigger mail, whatever
+                    // the notification setting says.
+                    'notify' => false,
                 ]);
 
                 $totals['imported'] += $result['imported'];

@@ -6,15 +6,25 @@ final class Permissions
 {
     // Team members
     public const MEMBER_VIEW = 'member.view';
+
     public const MEMBER_CREATE = 'member.create';
+
     public const MEMBER_UPDATE = 'member.update';
+
     public const MEMBER_DELETE = 'member.delete';
+
     public const MEMBER_EXPORT = 'member.export';
 
     // Settings
     public const SETTINGS_VIEW = 'settings.view';
+
+    /** Notification toggles and stored credentials. */
+    public const SETTINGS_MANAGE = 'settings.manage';
+
     public const TAG_MANAGE = 'tag.manage';
+
     public const CRM_MANAGE = 'crm.manage';
+
     public const INTEGRATION_MANAGE = 'integration.manage';
 
     // Activity log
@@ -23,7 +33,7 @@ final class Permissions
     public const ALL = [
         self::MEMBER_VIEW, self::MEMBER_CREATE, self::MEMBER_UPDATE,
         self::MEMBER_DELETE, self::MEMBER_EXPORT,
-        self::SETTINGS_VIEW, self::TAG_MANAGE, self::CRM_MANAGE,
+        self::SETTINGS_VIEW, self::SETTINGS_MANAGE, self::TAG_MANAGE, self::CRM_MANAGE,
         self::INTEGRATION_MANAGE, self::ACTIVITY_VIEW,
     ];
 

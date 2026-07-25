@@ -23,6 +23,7 @@ class User extends Authenticatable
         'mobile',
         'password',
         'is_active',
+        'must_reset_password',
     ];
 
     protected $hidden = [
@@ -37,6 +38,7 @@ class User extends Authenticatable
             'mobile_verified_at' => 'datetime',
             'last_login_at' => 'datetime',
             'is_active' => 'boolean',
+            'must_reset_password' => 'boolean',
             'password' => 'hashed',
         ];
     }

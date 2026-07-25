@@ -2,6 +2,8 @@
 
 namespace App\LeadSources;
 
+use App\Services\Support\SettingsService;
+use App\Support\Settings;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
@@ -21,12 +23,20 @@ class FacebookLeadSource
         return rtrim(config('facebook.graph_url'), '/').'/'.config('facebook.graph_version');
     }
 
+    public function __construct(private SettingsService $settings) {}
+
+    /**
+     * The encrypted store wins; config is only a bootstrap for a fresh install.
+     */
     private function userToken(): string
     {
-        $token = (string) config('facebook.access_token');
+        $token = (string) ($this->settings->get(Settings::FACEBOOK_TOKEN)
+            ?: config('facebook.access_token'));
 
         if ($token === '') {
-            throw new RuntimeException('No Facebook access token configured. Set FACEBOOK_ACCESS_TOKEN.');
+            throw new RuntimeException(
+                'No Facebook access token saved. Add one under Settings → Integrations.'
+            );
         }
 
         return $token;

@@ -2,17 +2,24 @@
 
 namespace App\Services\Crm;
 
+use App\Mail\NewLeadMail;
 use App\Models\Integration;
 use App\Models\Lead;
 use App\Models\LeadStage;
 use App\Models\User;
+use App\Services\Support\SettingsService;
+use App\Support\Settings;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
 
 class LeadService
 {
-    public function __construct(private CustomerService $customers) {}
+    public function __construct(
+        private CustomerService $customers,
+        private SettingsService $settings,
+    ) {}
 
     /**
      * Take in an enquiry from a campaign.
@@ -25,11 +32,11 @@ class LeadService
      * $options, so years of already-closed enquiries do not land on the team as
      * fresh work or light up the notification bell.
      *
-     * @param  array{stage_id?: int|null, assign?: bool, mark_read?: bool}  $options
+     * @param  array{stage_id?: int|null, assign?: bool, mark_read?: bool, notify?: bool}  $options
      */
     public function intake(Integration $integration, array $payload, array $options = []): Lead
     {
-        return DB::transaction(function () use ($integration, $payload, $options) {
+        $lead = DB::transaction(function () use ($integration, $payload, $options) {
             $customer = $this->customers->resolve(
                 $payload['mobile'],
                 $payload['email'] ?? null,
@@ -77,6 +84,36 @@ class LeadService
 
             return $lead;
         });
+
+        $this->notifyAssignee($lead, $options);
+
+        return $lead;
+    }
+
+    /**
+     * Email the member a lead landed on, if an owner has asked for that.
+     *
+     * Two guards, both deliberate. The setting is off unless switched on, and a
+     * backfill suppresses mail outright regardless — importing years of history
+     * must never send thousands of emails and burn the sending domain.
+     */
+    private function notifyAssignee(Lead $lead, array $options): void
+    {
+        if (($options['notify'] ?? true) === false || ! $lead->assigned_to) {
+            return;
+        }
+
+        if (! $this->settings->boolean(Settings::NEW_LEAD_EMAIL)) {
+            return;
+        }
+
+        $member = $lead->assignee;
+
+        if (! $member?->email || ! $member->is_active) {
+            return;
+        }
+
+        Mail::to($member->email)->queue(new NewLeadMail($lead->load('stage')));
     }
 
     /**

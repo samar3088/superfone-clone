@@ -31,12 +31,20 @@ interface Props {
     members: Member[];
     stageTypes: string[];
     fieldTypes: string[];
+    appSettings: AppSettings;
+}
+
+interface AppSettings {
+    new_lead_email: boolean;
+    /** Whether a token is stored. The value itself never reaches the browser. */
+    facebook_token_set: boolean;
 }
 
 const TOP_TABS = [
     { key: 'business', label: 'Business Management' },
     { key: 'crm', label: 'CRM Settings' },
     { key: 'integrations', label: 'Integrations' },
+    { key: 'notifications', label: 'Notifications' },
     { key: 'call', label: 'Call Settings', disabled: true },
     { key: 'automations', label: 'Automations', disabled: true },
     { key: 'webhooks', label: 'Webhooks', disabled: true },
@@ -79,7 +87,139 @@ export default function SettingsIndex(props: Props) {
                     providerTabs={props.providerTabs}
                 />
             )}
+            {tab === 'notifications' && <NotificationsTab settings={props.appSettings} />}
         </ConsoleLayout>
+    );
+}
+
+/* ── Notifications + stored credentials ─────────────── */
+
+function NotificationsTab({ settings }: { settings: AppSettings }) {
+    return (
+        <div className="max-w-2xl space-y-6">
+            <NewLeadEmailCard enabled={settings.new_lead_email} />
+            <FacebookTokenCard isSet={settings.facebook_token_set} />
+        </div>
+    );
+}
+
+function NewLeadEmailCard({ enabled }: { enabled: boolean }) {
+    const form = useForm({ new_lead_email: enabled });
+
+    function toggle(next: boolean) {
+        form.setData('new_lead_email', next);
+        router.put('/settings/notifications', { new_lead_email: next }, { preserveScroll: true });
+    }
+
+    return (
+        <section className="rounded-xl border border-border bg-card p-6">
+            <div className="flex items-start justify-between gap-6">
+                <div>
+                    <h2 className="font-display text-lg font-bold">New lead emails</h2>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                        Email a member as soon as a lead is assigned to them.
+                    </p>
+                </div>
+
+                <button
+                    type="button"
+                    role="switch"
+                    aria-checked={form.data.new_lead_email}
+                    aria-label="New lead emails"
+                    onClick={() => toggle(! form.data.new_lead_email)}
+                    className={`relative h-6 w-11 shrink-0 rounded-full transition ${
+                        form.data.new_lead_email ? 'bg-primary' : 'bg-muted-foreground/30'
+                    }`}
+                >
+                    <span
+                        className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${
+                            form.data.new_lead_email ? 'left-[22px]' : 'left-0.5'
+                        }`}
+                    />
+                </button>
+            </div>
+
+            <p className="mt-4 rounded-lg border-l-2 border-amber-500 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+                Off by default. A busy campaign can produce thousands of leads a
+                day — turn this on only once you are happy with that volume
+                landing in inboxes. Historical imports never send email.
+            </p>
+        </section>
+    );
+}
+
+function FacebookTokenCard({ isSet }: { isSet: boolean }) {
+    const [editing, setEditing] = useState(! isSet);
+    const form = useForm({ token: '' });
+
+    function submit(e: FormEvent) {
+        e.preventDefault();
+        form.put('/settings/facebook-token', {
+            preserveScroll: true,
+            onSuccess: () => { form.reset(); setEditing(false); },
+        });
+    }
+
+    return (
+        <section className="rounded-xl border border-border bg-card p-6">
+            <h2 className="font-display text-lg font-bold">Facebook access token</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+                Used to pull leads from connected forms. Stored encrypted — it is
+                never shown again once saved.
+            </p>
+
+            <div className="mt-4 flex items-center gap-2">
+                <Pill tone={isSet ? 'good' : 'bad'}>
+                    {isSet ? 'Token saved' : 'No token'}
+                </Pill>
+                {! isSet && (
+                    <span className="text-sm text-muted-foreground">Lead syncing is stopped.</span>
+                )}
+            </div>
+
+            {editing ? (
+                <form onSubmit={submit} className="mt-5 space-y-4">
+                    <Field label="Paste the token" error={form.errors.token}>
+                        <input
+                            type="password"
+                            autoComplete="off"
+                            spellCheck={false}
+                            className={inputClass}
+                            value={form.data.token}
+                            onChange={(e) => form.setData('token', e.target.value)}
+                            placeholder="EAA…"
+                        />
+                    </Field>
+                    <div className="flex gap-2">
+                        <Button type="submit" disabled={form.processing || form.data.token.length < 50}>
+                            Save token
+                        </Button>
+                        {isSet && (
+                            <Button type="button" variant="ghost" onClick={() => { form.reset(); setEditing(false); }}>
+                                Cancel
+                            </Button>
+                        )}
+                    </div>
+                </form>
+            ) : (
+                <div className="mt-5 flex gap-2">
+                    <Button type="button" variant="ghost" onClick={() => setEditing(true)}>
+                        Replace token
+                    </Button>
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => {
+                            if (confirm('Remove the token? Lead syncing will stop until a new one is saved.')) {
+                                router.delete('/settings/facebook-token', { preserveScroll: true });
+                            }
+                        }}
+                    >
+                        Remove
+                    </Button>
+                </div>
+            )}
+        </section>
     );
 }
 

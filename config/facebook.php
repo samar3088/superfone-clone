@@ -5,9 +5,13 @@ return [
     'app_secret' => env('FACEBOOK_APP_SECRET'),
 
     /*
-     | Long-lived user access token. Replace with a Business Manager System
-     | User token before go-live — a personal token expires in ~60 days and
-     | lead syncing would stop silently until someone reconnects.
+     | Bootstrap token only.
+     |
+     | The live token belongs in the app_settings store, where it is encrypted
+     | at rest and can be rotated from Settings without a deploy or a shell.
+     | FacebookLeadSource reads that first and only falls back to here, so this
+     | should stay empty outside of local setup — anything in .env is readable
+     | by every process on the box and prints in a stack trace.
      */
     'access_token' => env('FACEBOOK_ACCESS_TOKEN'),
 

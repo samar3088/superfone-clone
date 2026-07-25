@@ -8,6 +8,8 @@ use App\Models\Lead;
 use App\Models\LeadStage;
 use App\Models\User;
 use App\Services\Crm\FacebookSyncService;
+use App\Services\Support\SettingsService;
+use App\Support\Settings;
 use Database\Seeders\CrmSettingsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -34,6 +36,9 @@ class FacebookSyncTest extends TestCase
 
         $this->seed(CrmSettingsSeeder::class);
         $this->seedRoles();
+
+        // The token lives in the encrypted store now, not the environment.
+        app(SettingsService::class)->set(Settings::FACEBOOK_TOKEN, str_repeat('t', 60));
 
         $this->integration = Integration::create([
             'name' => 'Test form',

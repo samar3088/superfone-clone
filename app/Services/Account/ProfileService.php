@@ -39,7 +39,11 @@ class ProfileService
 
     public function changePassword(User $user, string $newPassword): void
     {
-        $user->forceFill(['password' => Hash::make($newPassword)])->save();
+        $user->forceFill([
+            'password' => Hash::make($newPassword),
+            // Whatever we emailed them is now dead, so lift the hold.
+            'must_reset_password' => false,
+        ])->save();
 
         activity('auth')->causedBy($user)->log('Changed password');
     }
