@@ -59,6 +59,8 @@ export default function ConsoleLayout({
         { label: 'Leads', href: '/leads', icon: IconSpark },
         { label: 'Customers', href: '/customers', icon: IconContact },
         { label: 'Team Members', href: '/team', icon: IconUsers },
+        // The organisation itself, as against the roster above it.
+        ...(auth.user?.is_owner ? [{ label: 'Teams', href: '/teams', icon: IconBuilding }] : []),
         { label: 'Activity Log', href: '/activity', icon: IconPulse },
         ...(auth.user?.is_owner ? [{ label: 'Settings', href: '/settings', icon: IconCog }] : []),
     ];
@@ -217,6 +219,13 @@ const IconUsers = ({ className }: IconProps) => (
         <path d="M16 20v-1.5a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4V20" />
         <circle cx="9" cy="7" r="3.2" />
         <path d="M22 20v-1.5a4 4 0 0 0-3-3.85M16 3.6a4 4 0 0 1 0 7.75" />
+    </svg>
+);
+
+const IconBuilding = ({ className }: IconProps) => (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+        <path d="M3 21h18M5 21V5a1 1 0 0 1 1-1h7a1 1 0 0 1 1 1v16M14 21V10h4a1 1 0 0 1 1 1v10" />
+        <path d="M8 8h2M8 12h2M8 16h2" strokeLinecap="round" />
     </svg>
 );
 

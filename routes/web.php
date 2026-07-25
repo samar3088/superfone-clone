@@ -13,6 +13,7 @@ use App\Http\Controllers\Settings\IntegrationController;
 use App\Http\Controllers\Settings\SettingsController;
 use App\Http\Controllers\Settings\TagController;
 use App\Http\Controllers\Team\MemberController;
+use App\Http\Controllers\TeamController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -69,6 +70,12 @@ Route::middleware('auth')->group(function () {
     Route::post('customers/{customer}/merge', [CustomerController::class, 'merge'])->name('customers.merge');
 
     // Team members
+    /*
+     | Mind the pair: `teams.*` is the organisation and its plan, `team.*` is
+     | the staff roster. Different things, one letter apart.
+     */
+    Route::get('teams', [TeamController::class, 'index'])->name('teams.index');
+
     Route::get('team/export', [MemberController::class, 'export'])->name('team.export');
     Route::get('team', [MemberController::class, 'index'])->name('team.index');
     Route::post('team', [MemberController::class, 'store'])->name('team.store');
