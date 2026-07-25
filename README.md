@@ -1,71 +1,64 @@
-# Superfone Admin
+# Superfone Console
 
-A replica of the Superfone owner dashboard (admin.superfone.co.in) built as a
-**Laravel 12 API** + **React (Vite) SPA**. The logged-in user is a business
-owner managing their organizations, staff, settings, and lead integrations.
-
-## Current scope — 5 pages
-
-| Page             | Route           | What it does                                                            |
-| ---------------- | --------------- | ----------------------------------------------------------------------- |
-| **Home**         | `/`             | Greeting, Explore AI cards, Call/Customer/Staff insights (date range), subscription overview |
-| **Teams**        | `/teams`        | Orgs table (status, number, staff x/y, leads x/y), Renew from wallet, Addon Purchase modal |
-| **Team Members** | `/team-members` | Staff across teams (name/role/state), Add staff modal (+91 phone, team, role) |
-| **Settings**     | `/settings`     | 5 tabs: Tags · Call Settings (sticky agent, IVR, ringing order) · CRM (lead stages + templates, groups) · Custom Fields · Priority Order |
-| **Integrations** | `/integrations` | Lead sources (Facebook wizard: name → page → form), 15-provider catalog, ACTIVE toggle |
-
-Every other sidebar item lands on a **Coming Soon** placeholder (`/soon/:title`)
-so the full Superfone navigation look is kept while the codebase stays focused.
-
-> The full earlier build (sticky-agent call engine, Live Call Dashboard,
-> WhatsApp inbox/broadcast, CRM pages, billing/analytics) is preserved in git —
-> first commit `Snapshot: full build before focusing codebase on 5 pages`.
+Business calling &amp; CRM admin, rebuilt from scratch on **Laravel 12 + Inertia 2 + React 19**.
 
 ## Stack
 
-| Layer    | Tech                                                          |
-| -------- | ------------------------------------------------------------- |
-| Backend  | Laravel 12, Sanctum token auth, MySQL (`superfone` database)   |
-| Frontend | React 19, Vite, React Router, Tailwind CSS v4, Inter font      |
+| Layer     | Choice                                                        |
+| --------- | ------------------------------------------------------------- |
+| Backend   | Laravel 12 (PHP 8.2+), MySQL database `superfone`              |
+| Frontend  | Inertia 2 + React 19 + TypeScript + Tailwind 4                 |
+| Auth      | Session-based; mobile + OTP with a password fallback           |
+| Access    | `spatie/laravel-permission` — roles **Owner** and **Member**   |
+| Auditing  | `spatie/laravel-activitylog` — every create/update/delete      |
 
-## Running
+## Engineering standards
 
-### Production (single URL — recommended)
+These are enforced structurally, not by convention:
+
+- **Controllers stay thin.** All business logic lives in `app/Services/**`; controllers validate through a `FormRequest`, call a service, and return.
+- **Every field is validated** server-side via `FormRequest`; Inertia flows the errors straight back to the form.
+- **Server-side datatables.** `DataTableService` does search, filter, sort and pagination in SQL. Sort and search columns are whitelisted — an arbitrary column from the client is neither an injection surface nor an unindexed scan.
+- **Chunked exports.** `ExportService` streams CSV via `chunkById()` straight to `php://output`, so memory stays flat regardless of row count. Cells beginning `= + - @` are escaped against spreadsheet formula injection.
+- **No browser caching of data.** The `NoBrowserCache` middleware sends `no-store` on every application response, so Back never shows stale records. Vite's content-hashed assets are unaffected.
+- **Indexes for the access patterns**, e.g. `users(is_active, id)` for the members table, `otp_codes(mobile, purpose, consumed_at, expires_at)` for verification lookups.
+
+## Getting started
 
 ```bash
-bash build.sh              # builds the SPA and publishes it into Laravel
-cd backend
-php artisan serve          # → http://localhost:8000
+composer install
+npm install
+php artisan migrate:fresh --seed
+npm run build      # or: npm run dev
+php artisan serve  # http://localhost:8000
 ```
 
-### Development (hot reload)
+### Sign in
 
-```bash
-cd backend  && php artisan serve    # API  → :8000
-cd frontend && npm run dev          # SPA  → :5173
-```
+| Role  | Mobile       | Password    |
+| ----- | ------------ | ----------- |
+| Owner | `9999900001` | `Owner@123` |
 
-## Login
+OTP login is the primary path. With `OTP_DRIVER=log` the code is written to
+`storage/logs/laravel.log` **and shown on screen in development**, so the flow
+works with no SMS gateway. Swap `OTP_DRIVER` when the client's gateway and DLT
+registration land — only the driver binding changes.
 
-```
-Email:    admin@superfone.test
-Password: admin123
-```
+### OTP security
 
-## API surface (all under `/api`, Bearer token except login)
+Codes are stored hashed, expire after 5 minutes, allow 5 wrong guesses before
+being burned, are single-use, and are rate limited per mobile (resend cooldown)
+and per IP (route throttle). Requesting a code for an unregistered number
+returns the same response as a registered one, so the endpoint cannot be used to
+enumerate accounts.
 
-- `POST /login` · `GET /me` · `POST /logout`
-- `GET /home` — insights for a `from`/`to` date range
-- `GET /orgs` · `POST /orgs/{org}/renew`
-- `GET /addons` · `POST /addons/purchase` · `GET /addon-purchases`
-- `apiResource /team-members`
-- `GET|POST|PATCH|DELETE /settings/*` — tags, lead-stages (+templates), lead-groups, custom-fields, call, ring-order, priority
-- `GET|POST|PATCH|DELETE /integrations` + `GET /integrations/facebook/pages[/{id}/forms]`
+## Roadmap
 
-## Notes
-
-- Re-seed anytime: `cd backend && php artisan migrate:fresh --seed`
-- Facebook pages/forms are served by a simulated driver shaped like the Meta
-  Graph API ([FacebookLeadSource](backend/app/LeadSources/FacebookLeadSource.php)) —
-  swap in real Graph calls once the client provides a Meta App + OAuth.
-- "Buy a new Number" opens a WhatsApp deep link, matching the real product.
+| Phase | Scope                                                             | Status  |
+| ----- | ----------------------------------------------------------------- | ------- |
+| 0     | Foundation, roles/permissions, datatable + export engines          | ✅ done |
+| 0.5   | Design system, login and console shell                             | ✅ done — awaiting client sign-off |
+| 1     | Profile, edit profile, forgot/reset password                       | next    |
+| 2     | Team members CRUD, activity log viewer                             | next    |
+| 3     | Settings — Tags, CRM (lead stage/group/priority), Facebook leads   | planned |
+| 4     | VICI dial telephony: inbound/outbound calling and reports          | blocked on API access |

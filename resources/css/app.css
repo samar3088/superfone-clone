@@ -1,0 +1,175 @@
+@import 'tailwindcss';
+
+@plugin 'tailwindcss-animate';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+
+@custom-variant dark (&:is(.dark *));
+
+/* ─────────────────────────────────────────────────────────────
+   Superfone · design tokens
+   Direction: "warm-paper operations console"
+   – canvas is warm paper, not grey; ink carries a green bias
+   – accent is deep teal (signal / connected), never SaaS cobalt
+   – status hues sit apart from the accent and always ship with a label
+   – three type roles: display / body / data(mono)
+   ───────────────────────────────────────────────────────────── */
+
+@theme {
+    --font-sans: 'Public Sans', ui-sans-serif, system-ui, sans-serif;
+    --font-display: 'Schibsted Grotesk', 'Public Sans', ui-sans-serif, sans-serif;
+    --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
+
+    --radius-lg: var(--radius);
+    --radius-md: calc(var(--radius) - 2px);
+    --radius-sm: calc(var(--radius) - 4px);
+
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+
+    /* semantic status — separate from the accent, always paired with text */
+    --color-good: var(--good);
+    --color-good-soft: var(--good-soft);
+    --color-warn: var(--warn);
+    --color-warn-soft: var(--warn-soft);
+    --color-bad: var(--bad);
+    --color-bad-soft: var(--bad-soft);
+
+    --color-rail: var(--rail);
+    --color-rail-foreground: var(--rail-foreground);
+}
+
+:root {
+    --radius: 0.7rem;
+
+    --background: #fbfaf7;          /* warm paper, not grey */
+    --foreground: #151e1b;          /* charcoal with a green bias */
+    --card: #ffffff;
+    --card-foreground: #151e1b;
+    --popover: #ffffff;
+    --popover-foreground: #151e1b;
+
+    --primary: #0b5d51;             /* deep teal — the single bold note */
+    --primary-foreground: #f4fbf9;
+    --secondary: #f1efe9;
+    --secondary-foreground: #2b3a36;
+    --muted: #f3f1eb;
+    --muted-foreground: #5f6e6a;
+    --accent: #e4f0ec;
+    --accent-foreground: #0b5d51;
+    --destructive: #be3a2b;
+    --destructive-foreground: #fdf6f4;
+
+    --border: #e8e3da;              /* warm hairline */
+    --input: #ddd7cc;
+    --ring: #0b5d51;
+
+    --good: #0f7a52;
+    --good-soft: #e2f2ea;
+    --warn: #b4690e;
+    --warn-soft: #fbeeda;
+    --bad: #be3a2b;
+    --bad-soft: #fbe7e3;
+
+    --rail: #0f1a17;                /* command rail */
+    --rail-foreground: #e8efec;
+}
+
+.dark {
+    --background: #101614;
+    --foreground: #e9efec;
+    --card: #171f1c;
+    --card-foreground: #e9efec;
+    --popover: #171f1c;
+    --popover-foreground: #e9efec;
+
+    --primary: #4fd1b5;             /* teal re-stepped for a dark ground */
+    --primary-foreground: #06231e;
+    --secondary: #1e2724;
+    --secondary-foreground: #d3ded9;
+    --muted: #1c2522;
+    --muted-foreground: #94a49e;
+    --accent: #16302a;
+    --accent-foreground: #7fe3cc;
+    --destructive: #f2705f;
+    --destructive-foreground: #2a0b07;
+
+    --border: #26302c;
+    --input: #303b37;
+    --ring: #4fd1b5;
+
+    --good: #45c98d;
+    --good-soft: #0d2b21;
+    --warn: #e0a340;
+    --warn-soft: #2e2208;
+    --bad: #f2705f;
+    --bad-soft: #33130f;
+
+    --rail: #0a100e;
+    --rail-foreground: #dde6e2;
+}
+
+@layer base {
+    * {
+        border-color: var(--border);
+    }
+
+    body {
+        background-color: var(--background);
+        color: var(--foreground);
+        font-feature-settings: 'cv05', 'ss01';
+    }
+
+    h1, h2, h3, h4 {
+        font-family: var(--font-display);
+        letter-spacing: -0.02em;
+        text-wrap: balance;
+    }
+
+    /* Digits that sit in columns must line up. */
+    table td, table th, .tabular {
+        font-variant-numeric: tabular-nums;
+    }
+}
+
+@layer components {
+    /* Eyebrow — titles a section without the weight of a heading. */
+    .eyebrow {
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.14em;
+        color: var(--muted-foreground);
+    }
+
+    /* Data cell: phone numbers, IDs, timestamps. */
+    .data {
+        font-family: var(--font-mono);
+        font-size: 0.86em;
+        letter-spacing: -0.01em;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+    }
+}
