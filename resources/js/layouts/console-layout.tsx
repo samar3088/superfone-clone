@@ -57,6 +57,7 @@ export default function ConsoleLayout({
     const nav = [
         { label: 'Dashboard', href: '/dashboard', icon: IconGrid },
         { label: 'Leads', href: '/leads', icon: IconSpark },
+        { label: 'Customers', href: '/customers', icon: IconContact },
         { label: 'Team Members', href: '/team', icon: IconUsers },
         { label: 'Activity Log', href: '/activity', icon: IconPulse },
         ...(auth.user?.is_owner ? [{ label: 'Settings', href: '/settings', icon: IconCog }] : []),
@@ -216,6 +217,14 @@ const IconUsers = ({ className }: IconProps) => (
         <path d="M16 20v-1.5a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4V20" />
         <circle cx="9" cy="7" r="3.2" />
         <path d="M22 20v-1.5a4 4 0 0 0-3-3.85M16 3.6a4 4 0 0 1 0 7.75" />
+    </svg>
+);
+
+const IconContact = ({ className }: IconProps) => (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+        <rect x="3" y="4" width="18" height="16" rx="2.5" />
+        <circle cx="10" cy="11" r="2.4" />
+        <path d="M6.5 17a3.8 3.8 0 0 1 7 0M16 9.5h3M16 13.5h3" strokeLinecap="round" />
     </svg>
 );
 

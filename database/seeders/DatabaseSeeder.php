@@ -13,7 +13,8 @@ class DatabaseSeeder extends Seeder
             RoleSeeder::class,
             OwnerSeeder::class,
             DemoMemberSeeder::class,
-            DemoLeadSeeder::class,
+            CrmSettingsSeeder::class,
+            DemoCrmDataSeeder::class,
         ]);
     }
 }

@@ -1,0 +1,289 @@
+import { Head, router, useForm } from '@inertiajs/react';
+import { FormEvent, ReactNode, useState } from 'react';
+
+import { Button, Field, Modal, Pill, inputClass } from '@/components/ui-kit';
+import ConsoleLayout from '@/layouts/console-layout';
+
+interface Customer {
+    id: number;
+    name: string;
+    mobile: string;
+    email: string | null;
+    city: string | null;
+    notes: string | null;
+    leads_count: number;
+    calls_count: number;
+    last_activity_at: string | null;
+}
+
+interface Lead {
+    id: number;
+    campaign: string | null;
+    source: string;
+    created_at: string;
+    stage: { id: number; name: string; emoji: string | null; type: string } | null;
+    assignee: { id: number; name: string } | null;
+}
+
+interface Duplicate {
+    id: number;
+    name: string;
+    mobile: string;
+    email: string | null;
+}
+
+const TONE: Record<string, 'good' | 'bad' | 'neutral'> = {
+    FINAL_POSITIVE: 'good',
+    FINAL_NEGATIVE: 'bad',
+    INITIAL: 'neutral',
+    NONE: 'neutral',
+};
+
+export default function CustomerShow({
+    customer,
+    leads,
+    duplicates,
+}: {
+    customer: Customer;
+    leads: Lead[];
+    duplicates: Duplicate[];
+}) {
+    const [editing, setEditing] = useState(false);
+    const [merging, setMerging] = useState(false);
+
+    return (
+        <ConsoleLayout
+            title={customer.name}
+            description={`${customer.leads_count} lead${customer.leads_count === 1 ? '' : 's'} · ${customer.calls_count} call${customer.calls_count === 1 ? '' : 's'}`}
+            actions={
+                <>
+                    {duplicates.length > 0 && (
+                        <Button variant="ghost" onClick={() => setMerging(true)}>
+                            Merge duplicates
+                        </Button>
+                    )}
+                    <Button onClick={() => setEditing(true)}>Edit customer</Button>
+                </>
+            }
+        >
+            <Head title={customer.name} />
+
+            <div className="grid gap-5 lg:grid-cols-[320px_1fr]">
+                <section className="rounded-xl border border-border bg-card p-5">
+                    <h2 className="eyebrow">Details</h2>
+                    <dl className="mt-4 space-y-3 text-sm">
+                        <Row label="Mobile">
+                            <span className="data">{customer.mobile}</span>
+                        </Row>
+                        <Row label="Email">{customer.email ?? '—'}</Row>
+                        <Row label="City">{customer.city ?? '—'}</Row>
+                        <Row label="Last activity">
+                            {customer.last_activity_at ? (
+                                <span className="data">{customer.last_activity_at.slice(0, 16).replace('T', ' ')}</span>
+                            ) : (
+                                '—'
+                            )}
+                        </Row>
+                    </dl>
+
+                    {customer.notes && (
+                        <>
+                            <h2 className="eyebrow mt-6">Notes</h2>
+                            <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">{customer.notes}</p>
+                        </>
+                    )}
+                </section>
+
+                <section className="overflow-hidden rounded-xl border border-border bg-card">
+                    <h2 className="border-b border-border px-5 py-4 font-display text-lg font-bold">Lead history</h2>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                            <thead>
+                                <tr className="border-b border-border">
+                                    {['Campaign', 'Source', 'Stage', 'Owner', 'Raised'].map((h) => (
+                                        <th key={h} className="px-4 py-3 text-left">
+                                            <span className="eyebrow">{h}</span>
+                                        </th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {leads.map((l) => (
+                                    <tr key={l.id} className="border-b border-border/60 last:border-0 hover:bg-muted/50">
+                                        <td className="px-4 py-3 font-medium">{l.campaign ?? '—'}</td>
+                                        <td className="px-4 py-3 capitalize text-muted-foreground">{l.source}</td>
+                                        <td className="px-4 py-3">
+                                            {l.stage ? (
+                                                <Pill tone={TONE[l.stage.type]}>
+                                                    {l.stage.emoji} {l.stage.name}
+                                                </Pill>
+                                            ) : (
+                                                <span className="text-muted-foreground">—</span>
+                                            )}
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            {l.assignee?.name ?? <span className="text-muted-foreground">Unassigned</span>}
+                                        </td>
+                                        <td className="px-4 py-3 data text-muted-foreground">{l.created_at.slice(0, 10)}</td>
+                                    </tr>
+                                ))}
+                                {leads.length === 0 && (
+                                    <tr>
+                                        <td colSpan={5} className="px-4 py-12 text-center text-muted-foreground">
+                                            No leads yet.
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+
+            {editing && <EditForm customer={customer} onClose={() => setEditing(false)} />}
+            {merging && <MergeForm customer={customer} duplicates={duplicates} onClose={() => setMerging(false)} />}
+        </ConsoleLayout>
+    );
+}
+
+function Row({ label, children }: { label: string; children: ReactNode }) {
+    return (
+        <div className="flex justify-between gap-3">
+            <dt className="text-muted-foreground">{label}</dt>
+            <dd className="text-right font-medium">{children}</dd>
+        </div>
+    );
+}
+
+function EditForm({ customer, onClose }: { customer: Customer; onClose: () => void }) {
+    const form = useForm({
+        name: customer.name,
+        mobile: customer.mobile,
+        email: customer.email ?? '',
+        city: customer.city ?? '',
+        notes: customer.notes ?? '',
+    });
+
+    const submit = (e: FormEvent) => {
+        e.preventDefault();
+        form.patch(`/customers/${customer.id}`, { preserveScroll: true, onSuccess: onClose });
+    };
+
+    return (
+        <Modal open onClose={onClose} title="Edit customer">
+            <form onSubmit={submit} className="space-y-4">
+                <Field label="Name" required error={form.errors.name}>
+                    <input
+                        className={inputClass}
+                        value={form.data.name}
+                        autoFocus
+                        onChange={(e) => form.setData('name', e.target.value)}
+                    />
+                </Field>
+                <Field label="Mobile" required error={form.errors.mobile}>
+                    <input
+                        className={`${inputClass} data`}
+                        maxLength={10}
+                        value={form.data.mobile}
+                        onChange={(e) => form.setData('mobile', e.target.value.replace(/\D/g, ''))}
+                    />
+                </Field>
+                <Field label="Email" error={form.errors.email}>
+                    <input
+                        type="email"
+                        className={inputClass}
+                        value={form.data.email}
+                        onChange={(e) => form.setData('email', e.target.value)}
+                    />
+                </Field>
+                <Field label="City">
+                    <input
+                        className={inputClass}
+                        value={form.data.city}
+                        onChange={(e) => form.setData('city', e.target.value)}
+                    />
+                </Field>
+                <Field label="Notes">
+                    <textarea
+                        rows={3}
+                        className={inputClass}
+                        value={form.data.notes}
+                        onChange={(e) => form.setData('notes', e.target.value)}
+                    />
+                </Field>
+                <div className="flex justify-end gap-3">
+                    <Button type="button" variant="ghost" onClick={onClose}>
+                        Cancel
+                    </Button>
+                    <Button type="submit" disabled={form.processing}>
+                        Save
+                    </Button>
+                </div>
+            </form>
+        </Modal>
+    );
+}
+
+function MergeForm({
+    customer,
+    duplicates,
+    onClose,
+}: {
+    customer: Customer;
+    duplicates: Duplicate[];
+    onClose: () => void;
+}) {
+    const [selected, setSelected] = useState<number[]>([]);
+
+    const toggle = (id: number) =>
+        setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
+
+    return (
+        <Modal
+            open
+            onClose={onClose}
+            title={`Merge into ${customer.name}`}
+            description="Their leads and calls move to this record. The duplicates are archived, not deleted."
+        >
+            <div className="space-y-2">
+                {duplicates.map((d) => (
+                    <label
+                        key={d.id}
+                        className="flex cursor-pointer items-center gap-3 rounded-lg border border-border p-3 hover:bg-muted"
+                    >
+                        <input
+                            type="checkbox"
+                            className="size-4 accent-primary"
+                            checked={selected.includes(d.id)}
+                            onChange={() => toggle(d.id)}
+                        />
+                        <span className="min-w-0 flex-1">
+                            <span className="block font-medium">{d.name}</span>
+                            <span className="block data text-xs text-muted-foreground">
+                                {d.mobile}
+                                {d.email ? ` · ${d.email}` : ''}
+                            </span>
+                        </span>
+                    </label>
+                ))}
+            </div>
+            <div className="mt-5 flex justify-end gap-3">
+                <Button variant="ghost" onClick={onClose}>
+                    Cancel
+                </Button>
+                <Button
+                    disabled={selected.length === 0}
+                    onClick={() =>
+                        router.post(
+                            `/customers/${customer.id}/merge`,
+                            { duplicate_ids: selected },
+                            { preserveScroll: true, onSuccess: onClose }
+                        )
+                    }
+                >
+                    Merge {selected.length > 0 ? selected.length : ''}
+                </Button>
+            </div>
+        </Modal>
+    );
+}

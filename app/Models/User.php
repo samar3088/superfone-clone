@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Support\Roles;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -54,6 +55,11 @@ class User extends Authenticatable
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs()
             ->useLogName('user');
+    }
+
+    public function calls(): HasMany
+    {
+        return $this->hasMany(Call::class);
     }
 
     public function initials(): string

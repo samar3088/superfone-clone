@@ -14,12 +14,22 @@ class Lead extends Model
     use LogsActivity, SoftDeletes;
 
     protected $fillable = [
-        'name', 'mobile', 'email', 'source', 'campaign', 'assigned_to', 'viewed_at',
+        'customer_id', 'name', 'mobile', 'email', 'source', 'campaign',
+        'integration_id', 'lead_stage_id', 'lead_group_id', 'custom_data',
+        'assigned_to', 'viewed_at', 'version', 'last_updated_by',
     ];
 
     protected function casts(): array
     {
-        return ['viewed_at' => 'datetime'];
+        return [
+            'viewed_at' => 'datetime',
+            'custom_data' => 'array',
+        ];
+    }
+
+    public function customer(): BelongsTo
+    {
+        return $this->belongsTo(Customer::class);
     }
 
     public function assignee(): BelongsTo
@@ -27,7 +37,27 @@ class Lead extends Model
         return $this->belongsTo(User::class, 'assigned_to');
     }
 
-    /** Leads the given user hasn't seen yet — owners see every unread lead. */
+    public function stage(): BelongsTo
+    {
+        return $this->belongsTo(LeadStage::class, 'lead_stage_id');
+    }
+
+    public function group(): BelongsTo
+    {
+        return $this->belongsTo(LeadGroup::class, 'lead_group_id');
+    }
+
+    public function integration(): BelongsTo
+    {
+        return $this->belongsTo(Integration::class);
+    }
+
+    public function lastEditor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'last_updated_by');
+    }
+
+    /** Leads the given user hasn't seen — owners see every unread lead. */
     public function scopeUnreadFor(Builder $query, User $user): Builder
     {
         return $query
@@ -38,7 +68,7 @@ class Lead extends Model
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['name', 'mobile', 'assigned_to'])
+            ->logOnly(['name', 'mobile', 'assigned_to', 'lead_stage_id', 'lead_group_id'])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs()
             ->useLogName('lead');
