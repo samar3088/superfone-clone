@@ -23,7 +23,7 @@ stops launch outright — the system will appear to work and quietly do nothing.
 
 | # | Task | Owner | Why it matters |
 |---|---|---|---|
-| 1.1 | **BLOCKER** Add the cron entry: `* * * * * cd /path/to/app && php artisan schedule:run >> /dev/null 2>&1` | Host | Without it **no leads are ever pulled automatically**. The two-hourly sync is defined and tested, but nothing runs it. The app looks healthy and silently receives nothing. |
+| 1.1 | **BLOCKER** Add the cron entry: `* * * * * cd /path/to/app && php artisan schedule:run >> /dev/null 2>&1` | Host | Without it **no leads are ever pulled automatically** and **no delayed lead alerts are ever sent**. Both the two-hourly sync and the five-minutely notification sweep are defined and tested, but nothing runs them. The app looks healthy and silently receives nothing. |
 | 1.2 | **BLOCKER** Run a queue worker (`php artisan queue:work`, under supervisor or equivalent) | Host | Welcome emails and lead alerts are queued. With no worker they sit in the `jobs` table forever — no error, no email. |
 | 1.3 | **BLOCKER** Set `APP_DEBUG=false` | Host | With it on, any error page prints the full stack trace **including the Facebook token**. |
 | 1.4 | Set `APP_ENV=production`, `APP_URL` to the real domain | Host | Signed links and email URLs use it. |
@@ -97,10 +97,7 @@ Not blockers, but the client should not be surprised:
 1. **Nobody is alerted when a sync fails.** Failures are recorded on the
    integration's Logs tab and nowhere else. If the token dies, lead flow stops
    and the only symptom is leads not arriving.
-2. **The Existing Lead to-do settings do nothing.** The form saves task type,
-   title and due time, but there is no task list in the system for them to
-   create work in.
-3. **Field Priority Order is read-only**, pending an answer on what it should do.
+2. **Field Priority Order is read-only**, pending an answer on what it should do.
 4. **Custom form answers are only visible in the new-lead email** — there is no
    lead detail screen, so on the Leads list those answers cannot be seen.
 5. **Telephony is not built.** No virtual number, call records or recordings.

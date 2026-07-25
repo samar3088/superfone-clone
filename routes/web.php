@@ -12,6 +12,7 @@ use App\Http\Controllers\Settings\CrmSettingsController;
 use App\Http\Controllers\Settings\IntegrationController;
 use App\Http\Controllers\Settings\SettingsController;
 use App\Http\Controllers\Settings\TagController;
+use App\Http\Controllers\TaskController;
 use App\Http\Controllers\Team\MemberController;
 use App\Http\Controllers\TeamController;
 use Illuminate\Support\Facades\Route;
@@ -57,6 +58,12 @@ Route::middleware('auth')->group(function () {
     Route::put('profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
 
     // Leads
+    // "todos" rather than "tasks": the UI calls them to-dos, and the settings
+    // that raise them are labelled "create a to-do".
+    Route::get('todos', [TaskController::class, 'index'])->name('todos.index');
+    Route::patch('todos/{task}/complete', [TaskController::class, 'complete'])->name('todos.complete');
+    Route::patch('todos/{task}/reopen', [TaskController::class, 'reopen'])->name('todos.reopen');
+
     Route::get('leads', [LeadController::class, 'index'])->name('leads.index');
     Route::get('leads/export', [LeadController::class, 'export'])->name('leads.export');
     Route::post('leads/mark-read', [LeadController::class, 'markAllRead'])->name('leads.read');

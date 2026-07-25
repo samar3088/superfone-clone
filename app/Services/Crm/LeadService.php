@@ -20,6 +20,7 @@ class LeadService
         private CustomerService $customers,
         private SettingsService $settings,
         private DuplicateLeadService $duplicates,
+        private TaskService $tasks,
     ) {}
 
     /**
@@ -89,7 +90,13 @@ class LeadService
             $lead->is_existing = $original !== null;
             $lead->duplicate_of_id = $original?->id;
 
+            $lead->notify_at = $this->notifyAt($lead, $integration, $options);
+
             $lead->save();
+
+            // Whatever this campaign's rules ask for — a first call on a new
+            // enquiry, a follow-up on a repeat.
+            $this->tasks->createFromRules($lead, $integration);
 
             $this->customers->touchActivity($customer);
 
@@ -102,6 +109,35 @@ class LeadService
     }
 
     /**
+     * When the assignee should be told, or null for never.
+     *
+     * A campaign can ask for a delay — "tell me thirty minutes after it lands"
+     * — so this is a time to act on later, not a decision to send now.
+     */
+    private function notifyAt(Lead $lead, Integration $integration, array $options): ?Carbon
+    {
+        if (($options['notify'] ?? true) === false) {
+            return null;
+        }
+
+        $prefix = $lead->is_existing ? 'existing_' : '';
+
+        $parentOn = $lead->is_existing
+            ? $integration->existing_lead_enabled
+            : $integration->new_lead_enabled;
+
+        if (! $parentOn || ! $integration->{"{$prefix}notify_enabled"}) {
+            return null;
+        }
+
+        return $this->tasks->dueAt(
+            $lead->created_at,
+            $integration->{"{$prefix}notify_value"} ?? 0,
+            $integration->{"{$prefix}notify_unit"} ?? 'minutes',
+        ) ?? $lead->created_at;
+    }
+
+    /**
      * Email the member a lead landed on, if an owner has asked for that.
      *
      * Two guards, both deliberate. The setting is off unless switched on, and a
@@ -110,21 +146,54 @@ class LeadService
      */
     private function notifyAssignee(Lead $lead, array $options): void
     {
-        if (($options['notify'] ?? true) === false || ! $lead->assigned_to) {
+        if (($options['notify'] ?? true) === false) {
             return;
         }
 
-        if (! $this->settings->boolean(Settings::NEW_LEAD_EMAIL)) {
+        /*
+         | Only send now if it is already due. A campaign asking for a delay
+         | leaves notify_at in the future, and leads:notify picks it up when the
+         | time comes.
+         */
+        if ($lead->notify_at && $lead->notify_at->isFuture()) {
             return;
+        }
+
+        $this->deliverNotification($lead);
+    }
+
+    /**
+     * Email the assignee about this lead, if everything still lines up.
+     *
+     * Re-checked at send time rather than trusted from intake: with a delay
+     * configured, minutes or hours may have passed and the lead could have been
+     * reassigned, or the member deactivated, in between.
+     *
+     * @return bool whether mail was actually queued
+     */
+    public function deliverNotification(Lead $lead): bool
+    {
+        if ($lead->notified_at || ! $lead->assigned_to) {
+            return false;
+        }
+
+        if (! $this->settings->boolean(Settings::NEW_LEAD_EMAIL)) {
+            return false;
         }
 
         $member = $lead->assignee;
 
         if (! $member?->email || ! $member->is_active) {
-            return;
+            return false;
         }
 
         Mail::to($member->email)->queue(new NewLeadMail($lead->load('stage')));
+
+        // Stamped whether or not the worker later succeeds — better a missed
+        // email than the same one every five minutes forever.
+        $lead->forceFill(['notified_at' => now()])->save();
+
+        return true;
     }
 
     /**

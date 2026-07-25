@@ -18,3 +18,13 @@ Schedule::command('leads:sync')
     ->everyTwoHours()
     ->withoutOverlapping(115)
     ->runInBackground();
+
+/*
+ | Alerts a campaign asked to delay. Every five minutes because the delay is
+ | configurable down to seconds — a two-hourly sweep would make "tell me in
+ | thirty seconds" mean "tell me within two hours".
+ */
+Schedule::command('leads:notify')
+    ->everyFiveMinutes()
+    ->withoutOverlapping(10)
+    ->runInBackground();

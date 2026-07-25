@@ -27,6 +27,8 @@ class Lead extends Model
     {
         return [
             'viewed_at' => 'datetime',
+            'notify_at' => 'datetime',
+            'notified_at' => 'datetime',
             'custom_data' => 'array',
             'is_existing' => 'boolean',
         ];

@@ -118,10 +118,13 @@ differently — a returning customer reaching the same person they spoke to befo
    campaigns counts as three fresh leads. If conversion rates are measured per
    campaign that is right; if measured per customer it overstates the total.
 
-2. **What a repeat should do beyond being labelled.** The integration settings already
-   collect a *Create to do on existing lead* rule — task type, title, due time — but
-   **nothing acts on it yet**, because there is no task list in the system. Those
-   settings save and validate but do nothing today.
+2. **What a repeat should do beyond being labelled.** *Now built:* the campaign's
+   *Create to do on existing lead* rule raises a to-do against the assignee, with its
+   own task type, title and due time, separate from the New Lead rule. Both appear on
+   the **To-Dos** screen.
+
+   > **Confirm:** whether the notification and to-do wording is right for the business,
+   > and what the default due times should be per campaign.
 
 3. **Leads with no usable mobile number are dropped entirely.** A Facebook form using an
    unexpected field name for the phone number would have its leads silently discarded.

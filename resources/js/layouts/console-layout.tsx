@@ -57,6 +57,7 @@ export default function ConsoleLayout({
     const nav = [
         { label: 'Dashboard', href: '/dashboard', icon: IconGrid },
         { label: 'Leads', href: '/leads', icon: IconSpark },
+        { label: 'To-Dos', href: '/todos', icon: IconCheck },
         { label: 'Customers', href: '/customers', icon: IconContact },
         // A single figure for one person, a group for the organisation they
         // sit in — so the pair reads apart at a glance in a collapsed sidebar.
@@ -220,6 +221,14 @@ const IconUsers = ({ className }: IconProps) => (
         <path d="M16 20v-1.5a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4V20" />
         <circle cx="9" cy="7" r="3.2" />
         <path d="M22 20v-1.5a4 4 0 0 0-3-3.85M16 3.6a4 4 0 0 1 0 7.75" />
+    </svg>
+);
+
+const IconCheck = ({ className }: IconProps) => (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+        <path d="M9 11.5 11.5 14 16 9" strokeLinecap="round" strokeLinejoin="round" />
+        <rect x="3.5" y="4.5" width="17" height="16" rx="2.5" />
+        <path d="M8 2.5v4M16 2.5v4" strokeLinecap="round" />
     </svg>
 );
 
