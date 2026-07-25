@@ -3,6 +3,7 @@ import { FormEvent, useEffect, useState } from 'react';
 
 import { FacebookReconnect } from '@/components/facebook-reconnect';
 import { Button, Field, Modal, Pill, inputClass } from '@/components/ui-kit';
+import { useUrlTab } from '@/hooks/use-url-tab';
 import ConsoleLayout from '@/layouts/console-layout';
 
 interface Tag { id: number; name: string; color: string; emoji: string | null; is_hidden: boolean }
@@ -53,7 +54,12 @@ const TOP_TABS = [
 ];
 
 export default function SettingsIndex(props: Props) {
-    const [tab, setTab] = useState('business');
+    // Kept in the url so a refresh stays put and a tab can be linked to.
+    const [tab, setTab] = useUrlTab(
+        'tab',
+        'business',
+        TOP_TABS.filter((t) => !t.disabled).map((t) => t.key),
+    );
 
     return (
         <ConsoleLayout title="Settings" description="Business configuration, CRM structure and lead sources.">
@@ -431,7 +437,8 @@ const CRM_TABS = [
 ];
 
 function CrmTab({ leadStages, leadGroups, customFields, fieldPriorities, stageTypes, fieldTypes }: Props) {
-    const [sub, setSub] = useState('stage');
+    // Derived from CRM_TABS so the two can never drift apart.
+    const [sub, setSub] = useUrlTab('sub', 'stage', CRM_TABS.map((t) => t.key));
 
     return (
         <>

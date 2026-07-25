@@ -3,6 +3,7 @@ import { FormEvent, ReactNode, useEffect, useRef, useState } from 'react';
 
 import { FacebookReconnect } from '@/components/facebook-reconnect';
 import { Button, Field, Pill, inputClass } from '@/components/ui-kit';
+import { useUrlTab } from '@/hooks/use-url-tab';
 import ConsoleLayout from '@/layouts/console-layout';
 
 interface Named { id: number; name: string; emoji?: string | null; color?: string }
@@ -84,7 +85,7 @@ export default function IntegrationPage({
     logs: LogRow[];
     options: Options;
 }) {
-    const [tab, setTab] = useState<'config' | 'logs'>('config');
+    const [tab, setTab] = useUrlTab<'config' | 'logs'>('view', 'config', ['config', 'logs']);
     const [editing, setEditing] = useState(!integration.is_configured);
     const [reconnecting, setReconnecting] = useState(false);
 
