@@ -51,6 +51,8 @@
     --color-warn-soft: var(--warn-soft);
     --color-bad: var(--bad);
     --color-bad-soft: var(--bad-soft);
+    --color-info: var(--info);
+    --color-info-soft: var(--info-soft);
 
     --color-rail: var(--rail);
     --color-rail-foreground: var(--rail-foreground);
@@ -87,6 +89,10 @@
     --warn-soft: #fbeeda;
     --bad: #be3a2b;
     --bad-soft: #fbe7e3;
+    /* Neutral-informational blue. Not a status — used for actions that neither
+       succeed nor warn, like exporting. */
+    --info: #1d5fd0;
+    --info-soft: #e4ecfb;
 
     --rail: #0f1a17;                /* command rail */
     --rail-foreground: #e8efec;
@@ -121,6 +127,8 @@
     --warn-soft: #2e2208;
     --bad: #f2705f;
     --bad-soft: #33130f;
+    --info: #6ba4f8;
+    --info-soft: #101f38;
 
     --rail: #0a100e;
     --rail-foreground: #dde6e2;
