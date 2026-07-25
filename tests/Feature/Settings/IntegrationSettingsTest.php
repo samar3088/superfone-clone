@@ -108,7 +108,7 @@ class IntegrationSettingsTest extends TestCase
                 'notify_unit' => 'minutes',
                 'existing_lead_enabled' => true,
                 'existing_todo_enabled' => true,
-                'existing_todo_type' => 'FOLLOW UP',
+                'existing_todo_type' => 'FOLLOW-UP CALL',
                 'existing_todo_title' => 'Follow up with them again',
                 'existing_todo_due_value' => 2,
                 'existing_todo_due_unit' => 'hours',
@@ -122,7 +122,7 @@ class IntegrationSettingsTest extends TestCase
 
         $this->assertSame('FIRST CALL', $i->todo_type);
         $this->assertSame(30, $i->todo_due_value);
-        $this->assertSame('FOLLOW UP', $i->existing_todo_type);
+        $this->assertSame('FOLLOW-UP CALL', $i->existing_todo_type);
         $this->assertSame(2, $i->existing_todo_due_value);
         $this->assertSame('hours', $i->existing_todo_due_unit);
         $this->assertSame(5, $i->existing_notify_value);
@@ -145,7 +145,7 @@ class IntegrationSettingsTest extends TestCase
         $this->integration->update([
             'existing_lead_enabled' => true,
             'existing_todo_enabled' => true,
-            'existing_todo_type' => 'FOLLOW UP',
+            'existing_todo_type' => 'FOLLOW-UP CALL',
             'existing_todo_title' => 'Old title',
             'existing_todo_due_value' => 9,
             'existing_todo_due_unit' => 'days',

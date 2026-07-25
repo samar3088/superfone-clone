@@ -1,5 +1,5 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, ReactNode, useEffect, useRef, useState } from 'react';
 
 import { FacebookReconnect } from '@/components/facebook-reconnect';
 import { Button, Field, Pill, inputClass } from '@/components/ui-kit';
@@ -41,6 +41,9 @@ interface Integration {
     existing_notify_value: number | null;
     existing_notify_unit: string | null;
     created_at: string;
+    created_ago: string;
+    created_at_label: string;
+    team: string;
     page_picture: string | null;
     members: Named[];
     tags: Named[];
@@ -256,49 +259,105 @@ function PageCard({ integration }: { integration: Integration }) {
     );
 }
 
-function YesNo({ on }: { on: boolean }) {
-    return <Pill tone={on ? 'good' : 'bad'}>{on ? 'YES' : 'NO'}</Pill>;
+/** "FIRST CALL with title "Bangalore Packages"" — the rule, not just whether it exists. */
+function TodoRule({ type, title }: { type: string | null; title: string | null }) {
+    if (!type) {
+        return <span className="text-muted-foreground">Not set</span>;
+    }
+
+    return (
+        <span>
+            <span className="font-semibold">{type}</span>
+            {title && <> with title “{title}”</>}
+        </span>
+    );
 }
 
 function SettingsSummary({ integration, onEdit }: { integration: Integration; onEdit: () => void }) {
-    const chips = (items: Named[], colour = false) =>
-        items.length > 0 ? (
-            <span className="flex flex-wrap gap-1.5">
-                {items.map((i) => (
-                    <span
-                        key={i.id}
-                        className={`rounded-md px-2 py-0.5 text-xs font-semibold ${colour ? '' : 'bg-accent text-accent-foreground'}`}
-                        style={colour ? { background: `color-mix(in srgb, ${i.color} 14%, transparent)`, color: i.color } : undefined}
-                    >
-                        {i.emoji} {i.name}
-                    </span>
-                ))}
-            </span>
-        ) : (
-            '—'
-        );
-
     /*
-     | Two columns, read left to right in pairs. Source and Source Type sit
-     | together because they answer the same question at different grain.
+     | Rows are laid out in pairs, left then right, so related settings sit
+     | beside each other: Source with Source Type, and the two to-do rules
+     | facing one another.
      */
     const rows: Array<[string, React.ReactNode]> = [
         ['Source', integration.source ?? '—'],
         ['Source Type', integration.source_type ?? '—'],
-        ['Assigned Users', chips(integration.members)],
-        ['Lead Stage', integration.lead_stage ? `${integration.lead_stage.emoji ?? ''} ${integration.lead_stage.name}` : '—'],
+
+        [
+            'Webhook',
+            /*
+                A webhook only means anything for the Custom Webhook provider —
+                Facebook leads are pulled, not pushed. Saying so beats a dash
+                that reads like something failed to load.
+            */
+            integration.provider === 'facebook' ? (
+                <span className="text-muted-foreground">Not used — Facebook leads are pulled</span>
+            ) : (
+                <span className="text-muted-foreground">Not set</span>
+            ),
+        ],
+        ['Team', <span key="t" className="uppercase">{integration.team}</span>],
+
+        [
+            'Assigned Users',
+            integration.members.length > 0
+                ? integration.members.map((m) => m.name).join(', ')
+                : <span key="none" className="text-muted-foreground">Nobody — leads will land unassigned</span>,
+        ],
+        [
+            'Lead Stage',
+            integration.lead_stage
+                ? `${integration.lead_stage.emoji ?? ''} ${integration.lead_stage.name}`
+                : '—',
+        ],
+
         ['Lead Group', integration.lead_group?.name ?? '—'],
-        ['Created At', integration.created_at?.slice(0, 10) ?? '—'],
-        ['Create to do on new lead', <YesNo key="n" on={integration.todo_enabled} />],
-        ['Create to do on existing lead', <YesNo key="e" on={integration.existing_todo_enabled} />],
-        ['Labels', chips(integration.tags, true)],
+        ['Created At', integration.created_at_label ?? '—'],
+
+        [
+            'Create to do on new lead',
+            <TodoRule key="n" type={integration.todo_type} title={integration.todo_title} />,
+        ],
+        [
+            'Create to do on existing lead',
+            <TodoRule key="e" type={integration.existing_todo_type} title={integration.existing_todo_title} />,
+        ],
+
+        [
+            'Labels',
+            integration.tags.length > 0 ? (
+                <span className="flex flex-wrap gap-1.5">
+                    {integration.tags.map((t) => (
+                        <span
+                            key={t.id}
+                            className="rounded-md px-2 py-0.5 text-xs font-semibold"
+                            style={{ background: `color-mix(in srgb, ${t.color} 14%, transparent)`, color: t.color }}
+                        >
+                            {t.emoji} {t.name}
+                        </span>
+                    ))}
+                </span>
+            ) : (
+                '—'
+            ),
+        ],
     ];
 
     return (
         <section className="mt-5 overflow-hidden rounded-xl border border-border bg-card">
-            <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-4">
-                <h2 className="font-display text-lg font-bold">Integration Settings</h2>
-                <Button onClick={onEdit}>Edit</Button>
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4">
+                <div>
+                    <h2 className="font-display text-lg font-bold">Integration Settings</h2>
+                    <p className="mt-0.5 text-sm text-muted-foreground">Created {integration.created_ago}</p>
+                </div>
+
+                <div className="flex items-center gap-3">
+                    <span className="eyebrow">{integration.provider} direct</span>
+                    <Pill tone={integration.status === 'active' ? 'good' : 'neutral'}>
+                        {integration.status.toUpperCase()}
+                    </Pill>
+                    <Button onClick={onEdit}>Edit</Button>
+                </div>
             </div>
 
             <dl className="grid sm:grid-cols-2">
@@ -381,25 +440,25 @@ function SettingsForm({
                 <h3 className="font-display font-bold">Source</h3>
                 <p className="mt-0.5 text-sm text-muted-foreground">Where are these leads coming from?</p>
 
-                <div className="mt-4 space-y-4">
-                    <Field label="Integration name" required error={form.errors.name}>
+                <div className="mt-2 divide-y divide-border/60">
+                    <Row label="Integration name" required error={form.errors.name}>
                         <input className={inputClass} value={form.data.name}
                             onChange={(e) => form.setData('name', e.target.value)} />
-                    </Field>
+                    </Row>
 
-                    <Field label="Source type" required error={form.errors.source_type}
-                        hint="Where you are getting the leads from, e.g. Facebook or Google.">
+                    <Row label="Source Type" required error={form.errors.source_type}
+                        hint="Select the source from where you are getting the leads (e.g. Facebook, Whatsapp).">
                         <select className={inputClass} value={form.data.source_type}
                             onChange={(e) => form.setData('source_type', e.target.value)}>
                             {options.sourceTypes.map((t) => <option key={t} value={t}>{t}</option>)}
                         </select>
-                    </Field>
+                    </Row>
 
-                    <Field label="Source" required error={form.errors.source}
-                        hint="A subcategory of the source, e.g. Summer Campaign on Facebook.">
+                    <Row label="Source" required error={form.errors.source}
+                        hint="Choose a subcategory of the source, e.g. Summer Campaign on Facebook.">
                         <input className={inputClass} placeholder="Facebook" value={form.data.source}
                             onChange={(e) => form.setData('source', e.target.value)} />
-                    </Field>
+                    </Row>
                 </div>
             </section>
 
@@ -408,44 +467,39 @@ function SettingsForm({
                 <h3 className="font-display font-bold">Assignment</h3>
                 <p className="mt-0.5 text-sm text-muted-foreground">Who should own and how to classify these leads?</p>
 
-                <div className="mt-4 space-y-4">
-                    <Field label="Assignee users" error={form.errors.member_ids}
-                        hint="Leads are shared between the selected members in turn.">
-                        <div className="max-h-48 space-y-1 overflow-y-auto rounded-lg border border-border p-2">
-                            {options.members.map((m) => (
-                                <label key={m.id} className="flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 text-sm hover:bg-muted">
-                                    <input type="checkbox" className="size-4 accent-primary"
-                                        checked={form.data.member_ids.includes(m.id)}
-                                        onChange={() => toggleIn('member_ids', m.id)} />
-                                    {m.name}
-                                </label>
+                <div className="mt-2 divide-y divide-border/60">
+                    <Row label="Assignee Users" error={form.errors.member_ids}
+                        hint="Pick team members to assign the leads to. They are shared between them in turn.">
+                        <ChipSelect
+                            options={options.members}
+                            selected={form.data.member_ids}
+                            onToggle={(id) => toggleIn('member_ids', id)}
+                            placeholder="Select assignee users"
+                        />
+                    </Row>
+
+                    <Row label="Lead Stage" required error={form.errors.lead_stage_id}
+                        hint="Set the lead stage the lead should start on.">
+                        <select className={inputClass} value={form.data.lead_stage_id}
+                            onChange={(e) => form.setData('lead_stage_id', Number(e.target.value) || '')}>
+                            <option value="">Select lead stage</option>
+                            {options.stages.map((s) => (
+                                <option key={s.id} value={s.id}>{s.emoji} {s.name}</option>
                             ))}
-                        </div>
-                    </Field>
+                        </select>
+                    </Row>
 
-                    <div className="grid gap-4 sm:grid-cols-2">
-                        <Field label="Lead stage" required error={form.errors.lead_stage_id}
-                            hint="The stage new leads start on.">
-                            <select className={inputClass} value={form.data.lead_stage_id}
-                                onChange={(e) => form.setData('lead_stage_id', Number(e.target.value) || '')}>
-                                <option value="">Select lead stage</option>
-                                {options.stages.map((s) => (
-                                    <option key={s.id} value={s.id}>{s.emoji} {s.name}</option>
-                                ))}
-                            </select>
-                        </Field>
+                    <Row label="Lead Group" error={form.errors.lead_group_id}
+                        hint="Another way to classify your leads, e.g. to segregate them in reports.">
+                        <select className={inputClass} value={form.data.lead_group_id}
+                            onChange={(e) => form.setData('lead_group_id', Number(e.target.value) || '')}>
+                            <option value="">Select lead group</option>
+                            {options.groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
+                        </select>
+                    </Row>
 
-                        <Field label="Lead group" error={form.errors.lead_group_id}>
-                            <select className={inputClass} value={form.data.lead_group_id}
-                                onChange={(e) => form.setData('lead_group_id', Number(e.target.value) || '')}>
-                                <option value="">Select lead group</option>
-                                {options.groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
-                            </select>
-                        </Field>
-                    </div>
-
-                    <Field label="Labels" hint="Tags applied to every lead from this campaign.">
-                        <div className="flex flex-wrap gap-2 rounded-lg border border-border p-2.5">
+                    <Row label="Labels" hint="Select tags for the leads.">
+                        <div className="flex flex-wrap gap-2 rounded-lg border border-input p-2.5">
                             {options.tags.map((t) => {
                                 const on = form.data.tag_ids.includes(t.id);
                                 return (
@@ -457,7 +511,7 @@ function SettingsForm({
                                 );
                             })}
                         </div>
-                    </Field>
+                    </Row>
                 </div>
             </section>
 
@@ -493,6 +547,141 @@ function SettingsForm({
                 </Button>
             </div>
         </form>
+    );
+}
+
+/**
+ * A settings row: label on the left, control and its hint on the right.
+ *
+ * The stacked layout `Field` gives works for a modal, but these forms are wide
+ * and a full-width input under a two-word label reads as a wall.
+ */
+function Row({
+    label,
+    required = false,
+    hint,
+    error,
+    children,
+}: {
+    label: string;
+    required?: boolean;
+    hint?: string;
+    error?: string;
+    children: ReactNode;
+}) {
+    return (
+        <div className="grid gap-2 py-4 sm:grid-cols-[220px_minmax(0,1fr)] sm:gap-6">
+            <label className="pt-2 text-sm font-medium">
+                {required && <span style={{ color: 'var(--bad)' }}>* </span>}
+                {label}
+            </label>
+            <div className="min-w-0">
+                {children}
+                {error ? (
+                    <p className="mt-1.5 text-sm" style={{ color: 'var(--bad)' }}>{error}</p>
+                ) : (
+                    hint && <p className="mt-1.5 text-sm text-muted-foreground">{hint}</p>
+                )}
+            </div>
+        </div>
+    );
+}
+
+/**
+ * Chip picker: selections show as removable chips in the field itself, and the
+ * list marks what is already chosen. Reads far better than a tall checkbox
+ * column once a team grows past a handful of people.
+ */
+function ChipSelect({
+    options,
+    selected,
+    onToggle,
+    placeholder,
+}: {
+    options: Named[];
+    selected: number[];
+    onToggle: (id: number) => void;
+    placeholder: string;
+}) {
+    const [open, setOpen] = useState(false);
+    const box = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (!open) return;
+
+        const onDown = (e: MouseEvent) => {
+            if (box.current && !box.current.contains(e.target as Node)) setOpen(false);
+        };
+        document.addEventListener('mousedown', onDown);
+
+        return () => document.removeEventListener('mousedown', onDown);
+    }, [open]);
+
+    const chosen = options.filter((o) => selected.includes(o.id));
+
+    return (
+        <div className="relative" ref={box}>
+            <div
+                role="button"
+                tabIndex={0}
+                onClick={() => setOpen((o) => !o)}
+                onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setOpen((o) => !o)}
+                className="flex min-h-11 cursor-pointer flex-wrap items-center gap-1.5 rounded-lg border border-input bg-card px-2.5 py-2 text-sm transition focus:border-primary"
+            >
+                {chosen.length === 0 && <span className="text-muted-foreground">{placeholder}</span>}
+
+                {chosen.map((o) => (
+                    <span
+                        key={o.id}
+                        className="inline-flex items-center gap-1 rounded-md bg-accent px-2 py-0.5 text-xs font-semibold text-accent-foreground"
+                    >
+                        {o.name}
+                        <button
+                            type="button"
+                            aria-label={`Remove ${o.name}`}
+                            onClick={(e) => { e.stopPropagation(); onToggle(o.id); }}
+                            className="opacity-60 transition hover:opacity-100"
+                        >
+                            ×
+                        </button>
+                    </span>
+                ))}
+
+                <svg viewBox="0 0 24 24" className="ml-auto size-4 shrink-0 opacity-50" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden>
+                    <path d="m6 9 6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+            </div>
+
+            {open && (
+                <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 max-h-56 overflow-y-auto rounded-lg border border-border bg-card p-1 shadow-xl">
+                    {options.map((o) => {
+                        const on = selected.includes(o.id);
+
+                        return (
+                            <button
+                                key={o.id}
+                                type="button"
+                                onClick={() => onToggle(o.id)}
+                                className={`flex w-full items-center justify-between rounded-md px-2.5 py-2 text-left text-sm transition hover:bg-muted ${
+                                    on ? 'font-semibold text-primary' : ''
+                                }`}
+                            >
+                                {o.name}
+                                {on && (
+                                    <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden>
+                                        <path d="m5 13 4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
+                                    </svg>
+                                )}
+                            </button>
+                        );
+                    })}
+
+                    {options.length === 0 && (
+                        <p className="px-2 py-6 text-center text-sm text-muted-foreground">Nobody to pick yet</p>
+                    )}
+                </div>
+            )}
+        </div>
     );
 }
 
@@ -597,8 +786,8 @@ function LeadRuleBlock({
                         </label>
 
                         {d('todo_enabled') && (
-                            <div className="mt-4 space-y-4 pl-6">
-                                <Field label="Type" required error={err('todo_type')} hint={typeHint}>
+                            <div className="mt-2 divide-y divide-border/60">
+                                <Row label="Type" required error={err('todo_type')} hint={typeHint}>
                                     <select
                                         className={inputClass}
                                         value={d('todo_type')}
@@ -609,22 +798,22 @@ function LeadRuleBlock({
                                             <option key={t} value={t}>{t}</option>
                                         ))}
                                     </select>
-                                </Field>
+                                </Row>
 
-                                <Field label="Title" required error={err('todo_title')} hint={titleHint}>
+                                <Row label="Title" required error={err('todo_title')} hint={titleHint}>
                                     <input
                                         className={inputClass}
                                         placeholder="Enter title"
                                         value={d('todo_title')}
                                         onChange={(e) => set('todo_title', e.target.value)}
                                     />
-                                </Field>
+                                </Row>
 
-                                <Field
-                                    label="Due date"
+                                <Row
+                                    label="Due Date"
                                     required
                                     error={err('todo_due_value') ?? err('todo_due_unit')}
-                                    hint="How long after the lead arrives the task is due."
+                                    hint="Enter the date/time of when a task should be created."
                                 >
                                     <DurationInput
                                         value={d('todo_due_value')}
@@ -633,7 +822,7 @@ function LeadRuleBlock({
                                         onUnit={(u) => set('todo_due_unit', u)}
                                         placeholder="30"
                                     />
-                                </Field>
+                                </Row>
                             </div>
                         )}
                     </div>
@@ -650,21 +839,21 @@ function LeadRuleBlock({
                         </label>
 
                         {d('notify_enabled') && (
-                            <div className="mt-4 pl-6">
-                                <Field
-                                    label="Notification time"
+                            <div className="mt-2">
+                                <Row
+                                    label="Notification Time"
                                     required
                                     error={err('notify_value') ?? err('notify_unit')}
-                                    hint="How long after the lead arrives to send the notification. Zero means straight away."
+                                    hint="Enter the date/time of notification. Zero means straight away."
                                 >
                                     <DurationInput
                                         value={d('notify_value')}
                                         unit={d('notify_unit')}
                                         onValue={(v) => set('notify_value', v)}
                                         onUnit={(u) => set('notify_unit', u)}
-                                        placeholder="0"
+                                        placeholder="30"
                                     />
-                                </Field>
+                                </Row>
                             </div>
                         )}
                     </div>

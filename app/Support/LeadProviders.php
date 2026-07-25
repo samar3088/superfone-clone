@@ -36,22 +36,36 @@ final class LeadProviders
         return collect(self::all())->where('available', true)->pluck('key')->all();
     }
 
-    /** "Where are these leads coming from?" */
+    /**
+     * "Where are these leads coming from?"
+     *
+     * Describes how a lead reached us, which is not the same as the integration
+     * that carried it — a lead can arrive from a spreadsheet or a phone call
+     * with no integration at all.
+     */
     public static function sourceTypes(): array
     {
         return [
+            'CSV Upload',
             'Facebook Integration',
-            'Google Ads',
-            'Website Form',
-            'Referral',
-            'Walk-in',
-            'Other',
+            'Phone Contact',
+            'Whatsapp Message',
+            'Whatsapp Integration',
+            'Pabbly',
+            'Others',
         ];
     }
 
-    /** Task types offered by the new-lead To-Do rule. */
+    /** Task types offered by the New Lead and Existing Lead to-do rules. */
     public static function todoTypes(): array
     {
-        return ['FIRST CALL', 'FOLLOW UP', 'SEND QUOTATION', 'SITE VISIT', 'OTHER'];
+        return [
+            'FOLLOW-UP CALL',
+            'REMINDER',
+            'FIRST CALL',
+            'CALLBACK REQUEST',
+            'SITE VISIT',
+            'BOOKING/ APPOINTMENT/ DEMO',
+        ];
     }
 }

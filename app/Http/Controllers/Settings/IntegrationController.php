@@ -10,6 +10,7 @@ use App\Models\Integration;
 use App\Models\LeadGroup;
 use App\Models\LeadStage;
 use App\Models\Tag;
+use App\Models\Team;
 use App\Models\User;
 use App\Services\Crm\FacebookSyncService;
 use App\Support\LeadProviders;
@@ -108,6 +109,10 @@ class IntegrationController extends Controller
                 ...$integration->toArray(),
                 'is_configured' => $integration->isConfigured(),
                 'leads_count' => $integration->leads()->count(),
+                'created_ago' => $integration->created_at->diffForHumans(),
+                'created_at_label' => $integration->created_at->format('d M Y h:i:s A'),
+                // The organisation these leads belong to.
+                'team' => Team::value('name') ?? config('company.legal_name'),
             ],
             'logs' => $integration->logs()->limit(50)->get(),
             'options' => [
