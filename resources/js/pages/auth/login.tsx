@@ -12,7 +12,7 @@ interface OtpFlash {
 }
 
 export default function Login({ otpLength, resendCooldown }: { otpLength: number; resendCooldown: number }) {
-    const { props } = usePage<{ flash?: { otp?: OtpFlash } }>();
+    const { props } = usePage<{ flash?: { otp?: OtpFlash; error?: string; success?: string } }>();
     const [step, setStep] = useState<Step>('mobile');
     const [cooldown, setCooldown] = useState(0);
     const [devCode, setDevCode] = useState<string | null>(null);
@@ -117,6 +117,31 @@ export default function Login({ otpLength, resendCooldown }: { otpLength: number
                             </span>
                             <span className="font-display text-xl font-bold">VVT</span>
                         </div>
+
+                        {props.flash?.error && (
+                            <p
+                                className="mb-5 rounded-lg px-4 py-3 text-sm font-medium"
+                                style={{
+                                    background: 'var(--bad-soft)',
+                                    color: 'var(--bad)',
+                                    border: '1px solid color-mix(in srgb, var(--bad) 25%, transparent)',
+                                }}
+                            >
+                                {props.flash.error}
+                            </p>
+                        )}
+                        {props.flash?.success && (
+                            <p
+                                className="mb-5 rounded-lg px-4 py-3 text-sm font-medium"
+                                style={{
+                                    background: 'var(--good-soft)',
+                                    color: 'var(--good)',
+                                    border: '1px solid color-mix(in srgb, var(--good) 25%, transparent)',
+                                }}
+                            >
+                                {props.flash.success}
+                            </p>
+                        )}
 
                         {step === 'mobile' && (
                             <form onSubmit={sendCode} className="space-y-6">

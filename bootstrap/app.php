@@ -6,6 +6,8 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
+use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -26,5 +28,19 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        //
+        /*
+         | A stale CSRF token — a tab left open past the session lifetime —
+         | otherwise renders Laravel's bare "419 PAGE EXPIRED" screen. Send the
+         | visitor back to the page they were on with an explanation instead.
+         */
+        $exceptions->respond(function (Response $response, Throwable $e, Request $request) {
+            if ($response->getStatusCode() !== 419 || $request->expectsJson()) {
+                return $response;
+            }
+
+            return back()->withInput($request->except('password', 'code'))->with(
+                'error',
+                'Your session timed out for security. Please try that again.'
+            );
+        });
     })->create();
