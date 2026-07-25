@@ -4,7 +4,6 @@ namespace App\Services\Auth;
 
 use App\Models\OtpCode;
 use App\Services\Auth\Contracts\OtpSender;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -40,7 +39,7 @@ class OtpService
 
         OtpCode::create([
             'mobile' => $mobile,
-            'code_hash' => Hash::make($code),
+            'code_hash' => $this->hash($code),
             'purpose' => $purpose,
             'expires_at' => now()->addSeconds(config('otp.ttl_seconds')),
             'ip' => $ip,
@@ -72,7 +71,7 @@ class OtpService
             $this->fail('code', 'Too many incorrect attempts. Request a new code.');
         }
 
-        if (! Hash::check($code, $record->code_hash)) {
+        if (! hash_equals($record->code_hash, $this->hash($code))) {
             $record->increment('attempts');
             $remaining = max(0, config('otp.max_attempts') - $record->attempts);
 
@@ -109,6 +108,21 @@ class OtpService
         if ($wait > 0) {
             $this->fail('mobile', "Please wait {$wait}s before requesting another code.");
         }
+    }
+
+    /**
+     * Keyed hash of a code, so a database leak alone never reveals it.
+     *
+     * Deliberately HMAC rather than bcrypt. Bcrypt is slow by design to blunt
+     * offline brute force of passwords, but a code here lives 5 minutes, dies
+     * after 5 wrong guesses, and is rate limited per mobile and IP — so the
+     * slowness buys nothing while costing ~400ms of CPU on every single login.
+     * Reversing this still requires APP_KEY, and anyone holding APP_KEY plus
+     * the database already owns the session store.
+     */
+    private function hash(string $code): string
+    {
+        return hash_hmac('sha256', $code, (string) config('app.key'));
     }
 
     private function generateCode(): string

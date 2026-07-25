@@ -28,10 +28,28 @@ These are enforced structurally, not by convention:
 ```bash
 composer install
 npm install
-php artisan migrate:fresh --seed
+php artisan migrate --seed
 npm run build      # or: npm run dev
 php artisan serve  # http://localhost:8000
 ```
+
+### Day-to-day: migrations are incremental
+
+Schema changes ship as **new migration files**, never by rewriting old ones:
+
+```bash
+php artisan make:migration add_something_to_leads_table
+php artisan migrate      # applies only what is new
+php artisan db:seed      # safe to re-run, see below
+```
+
+`migrate:fresh` is reserved for a deliberate reset — it drops every table,
+which wipes the `sessions` table (logging everyone out mid-session) along with
+any data entered by hand.
+
+All seeders use `updateOrCreate` keyed on a natural identifier, so
+`php artisan db:seed` is idempotent — running it repeatedly tops up missing
+rows without duplicating anything.
 
 ### Sign in
 
