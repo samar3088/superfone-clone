@@ -6,7 +6,6 @@ use App\Models\Customer;
 use App\Services\Crm\CustomerService;
 use App\Services\Support\DataTableService;
 use App\Services\Support\ExportService;
-use Illuminate\Contracts\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
