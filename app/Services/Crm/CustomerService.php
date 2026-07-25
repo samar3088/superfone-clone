@@ -4,6 +4,7 @@ namespace App\Services\Crm;
 
 use App\Models\Customer;
 use App\Models\Lead;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -41,13 +42,22 @@ class CustomerService
             }
         }
 
-        return Customer::create([
-            'name' => $name,
-            'mobile' => $mobile,
-            'email' => $email,
-            'city' => $city,
-            'last_activity_at' => now(),
-        ]);
+        try {
+            return Customer::create([
+                'name' => $name,
+                'mobile' => $mobile,
+                'email' => $email,
+                'city' => $city,
+                'last_activity_at' => now(),
+            ]);
+        } catch (UniqueConstraintViolationException) {
+            /*
+             | Two syncs running at once can both miss the lookup and then race
+             | to insert the same person. The unique index on mobile settles it;
+             | the loser simply adopts the row that won.
+             */
+            return Customer::active()->where('mobile', $mobile)->firstOrFail();
+        }
     }
 
     /**

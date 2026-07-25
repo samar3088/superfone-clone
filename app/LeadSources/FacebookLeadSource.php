@@ -129,17 +129,31 @@ class FacebookLeadSource
     }
 
     /**
-     * Leads submitted against a form, newest first.
+     * Walk every lead on a form, handing each page to the callback.
+     *
+     * Graph caps a response at 100 rows and returns a cursor for the rest, so
+     * a single request silently truncates a busy form. This follows the cursor
+     * to the end, and streams page by page so a form with thousands of leads
+     * never has to sit in memory at once.
      *
      * @param  string|null  $since  unix timestamp; only newer leads are returned
-     * @return array<int, array{external_id: string, name: string, mobile: string, email: ?string, city: ?string, custom_data: array, created_time: string}>
+     * @param  callable  $handler  fn(array $leads, int $pageNumber): void
+     * @return array{pages: int, rows: int, complete: bool}
      */
-    public function fetchLeads(string $formId, string $pageId, ?string $since = null, int $limit = 100): array
-    {
+    public function eachLeadPage(
+        string $formId,
+        string $pageId,
+        ?string $since,
+        callable $handler,
+        int $pageSize = 100,
+        ?int $maxPages = null,
+    ): array {
+        $maxPages ??= config('facebook.max_pages_per_sync');
+
         $query = [
             'access_token' => $this->pageToken($pageId),
             'fields' => 'id,created_time,field_data',
-            'limit' => $limit,
+            'limit' => $pageSize,
         ];
 
         if ($since) {
@@ -150,9 +164,51 @@ class FacebookLeadSource
             ]]);
         }
 
-        $rows = $this->get("/{$formId}/leads", $query)['data'] ?? [];
+        $url = $this->base()."/{$formId}/leads";
+        $pages = 0;
+        $rows = 0;
 
-        return collect($rows)->map(fn (array $row) => $this->normalise($row))->filter()->values()->all();
+        while ($url && $pages < $maxPages) {
+            $request = Http::timeout(30)->retry(2, 500);
+
+            /*
+             | Only the first call builds its own query. Follow-up pages are
+             | complete urls carrying the cursor, token and filters already —
+             | and handing Guzzle a query array replaces the url's query string
+             | outright, which would strip every one of them.
+             */
+            $response = $query === null ? $request->get($url) : $request->get($url, $query);
+
+            if ($response->failed()) {
+                throw new RuntimeException('Facebook API error: '
+                    .($response->json('error.message') ?? $response->body()));
+            }
+
+            $body = $response->json() ?? [];
+            $leads = collect($body['data'] ?? [])
+                ->map(fn (array $row) => $this->normalise($row))
+                ->filter()
+                ->values()
+                ->all();
+
+            $pages++;
+            $rows += count($leads);
+
+            if ($leads !== []) {
+                $handler($leads, $pages);
+            }
+
+            $url = $body['paging']['next'] ?? null;
+            $query = null;
+        }
+
+        return [
+            'pages' => $pages,
+            'rows' => $rows,
+            // False means we stopped on the safety rail with more to collect,
+            // so the caller must not treat this window as fully drained.
+            'complete' => $url === null,
+        ];
     }
 
     /**

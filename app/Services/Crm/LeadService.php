@@ -6,6 +6,7 @@ use App\Models\Integration;
 use App\Models\Lead;
 use App\Models\LeadStage;
 use App\Models\User;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -19,10 +20,16 @@ class LeadService
      * The same person from a second campaign becomes a second lead against the
      * same customer. Ownership is distributed round-robin across the members
      * mapped to that campaign.
+     *
+     * A go-live backfill passes assign=false and mark_read=true through
+     * $options, so years of already-closed enquiries do not land on the team as
+     * fresh work or light up the notification bell.
+     *
+     * @param  array{stage_id?: int|null, assign?: bool, mark_read?: bool}  $options
      */
-    public function intake(Integration $integration, array $payload): Lead
+    public function intake(Integration $integration, array $payload, array $options = []): Lead
     {
-        return DB::transaction(function () use ($integration, $payload) {
+        return DB::transaction(function () use ($integration, $payload, $options) {
             $customer = $this->customers->resolve(
                 $payload['mobile'],
                 $payload['email'] ?? null,
@@ -30,7 +37,9 @@ class LeadService
                 $payload['city'] ?? null,
             );
 
-            $lead = Lead::create([
+            $lead = new Lead;
+
+            $lead->fill([
                 'external_id' => $payload['external_id'] ?? null,
                 'customer_id' => $customer->id,
                 'name' => $payload['name'],
@@ -42,11 +51,27 @@ class LeadService
                 'integration_id' => $integration->id,
                 // Assignment rules configured on the integration win; the
                 // global INITIAL stage is only a fallback.
-                'lead_stage_id' => $integration->lead_stage_id ?? $this->initialStageId(),
+                'lead_stage_id' => $options['stage_id']
+                    ?? $integration->lead_stage_id
+                    ?? $this->initialStageId(),
                 'lead_group_id' => $integration->lead_group_id,
-                'assigned_to' => $this->nextAssignee($integration),
+                'assigned_to' => ($options['assign'] ?? true)
+                    ? $this->nextAssignee($integration)
+                    : null,
                 'custom_data' => $payload['custom_data'] ?? null,
+                'viewed_at' => ($options['mark_read'] ?? false) ? now() : null,
             ]);
+
+            /*
+             | Date the lead when the enquiry was actually made, not when we
+             | happened to import it — otherwise a backfill would stamp years
+             | of history as arriving today and wreck every report.
+             */
+            if (! empty($payload['created_time'])) {
+                $lead->created_at = Carbon::parse($payload['created_time']);
+            }
+
+            $lead->save();
 
             $this->customers->touchActivity($customer);
 

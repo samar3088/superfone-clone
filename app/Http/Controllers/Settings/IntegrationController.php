@@ -6,12 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\StoreIntegrationRequest;
 use App\Http\Requests\Settings\UpdateIntegrationSettingsRequest;
 use App\LeadSources\FacebookLeadSource;
-use App\Services\Crm\FacebookSyncService;
 use App\Models\Integration;
 use App\Models\LeadGroup;
 use App\Models\LeadStage;
 use App\Models\Tag;
 use App\Models\User;
+use App\Services\Crm\FacebookSyncService;
 use App\Support\LeadProviders;
 use App\Support\Permissions;
 use App\Support\Roles;
@@ -127,10 +127,22 @@ class IntegrationController extends Controller
         $this->guard();
 
         try {
-            $result = $sync->sync($integration);
+            /*
+             | Bounded on purpose. A busy form can hold thousands of leads and
+             | this runs inside the request — the scheduled sync picks up
+             | whatever is left rather than the browser waiting on it.
+             */
+            $result = $sync->sync($integration, ['max_pages' => 5]);
         } catch (\Throwable $e) {
             // Already recorded on the Logs tab by the service.
             return back()->with('error', 'Sync failed: '.$e->getMessage());
+        }
+
+        if (! $result['complete']) {
+            return back()->with(
+                'success',
+                "Imported {$result['imported']} lead(s). More are still queued — they will arrive over the next few minutes."
+            );
         }
 
         return back()->with(
