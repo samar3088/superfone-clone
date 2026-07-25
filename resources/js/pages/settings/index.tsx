@@ -650,18 +650,20 @@ function FieldsPanel({ fields, fieldTypes }: { fields: CustomFieldRow[]; fieldTy
     );
 }
 
+/**
+ * Field Priority Order — deliberately read-only.
+ *
+ * The reference product renders this screen fully inert too: the handles do
+ * not drag, the checkboxes do not tick and the button does nothing. Until the
+ * client tells us what "priority" actually changes — field order on the lead
+ * detail, which columns show in a list, something else entirely — guessing
+ * would mean building the wrong thing and quietly reordering their data.
+ *
+ * The save endpoint still exists and is still validated; only the controls are
+ * disabled, so switching this on later is a small change.
+ */
 function PriorityPanel({ priorities }: { priorities: Record<string, Priority[]> }) {
-    const [rows, setRows] = useState<Priority[]>(Object.values(priorities).flat());
-    const [saved, setSaved] = useState(false);
-
-    const toggle = (id: number) =>
-        setRows((rs) => rs.map((r) => (r.id === id ? { ...r, is_selected: !r.is_selected } : r)));
-
-    const save = () => {
-        router.put('/settings/field-priority', {
-            fields: rows.map((r, i) => ({ id: r.id, is_selected: r.is_selected, sequence: i })),
-        }, { preserveScroll: true, onSuccess: () => { setSaved(true); setTimeout(() => setSaved(false), 2000); } });
-    };
+    const rows = Object.values(priorities).flat();
 
     const sections: Array<[string, string]> = [
         ['lead_tracking', 'Lead tracking fields'],
@@ -670,10 +672,16 @@ function PriorityPanel({ priorities }: { priorities: Record<string, Priority[]> 
 
     return (
         <>
-            <div className="mb-4 flex items-center justify-end gap-3">
-                {saved && <span className="text-sm font-medium" style={{ color: 'var(--good)' }}>Saved</span>}
-                <Button onClick={save}>Set priority fields</Button>
+            <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+                <p className="max-w-xl rounded-lg border-l-2 border-amber-500 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+                    Read-only for now. We are waiting on the client to confirm what
+                    field priority is meant to change before wiring it up.
+                </p>
+                <Button disabled title="Waiting on the client to confirm what this should do">
+                    Set priority fields
+                </Button>
             </div>
+
             <div className="grid gap-5 lg:grid-cols-2">
                 {sections.map(([key, title]) => (
                     <div key={key} className="overflow-hidden rounded-xl border border-border bg-card">
@@ -682,11 +690,21 @@ function PriorityPanel({ priorities }: { priorities: Record<string, Priority[]> 
                             <tbody>
                                 {rows.filter((r) => r.section === key).map((r) => (
                                     <tr key={r.id} className="border-b border-border/60 last:border-0">
-                                        <td className="w-12 px-4 py-3">
-                                            <input type="checkbox" checked={r.is_selected} className="size-4 accent-primary"
-                                                aria-label={`Select ${r.label}`} onChange={() => toggle(r.id)} />
+                                        <td className="w-9 pl-4 pr-1 py-3">
+                                            {/* Shown because the row is reorderable in principle, greyed because it is not yet. */}
+                                            <span className="text-muted-foreground/35" aria-hidden>⠿</span>
                                         </td>
-                                        <td className="px-2 py-3 font-medium">{r.label}</td>
+                                        <td className="w-10 px-1 py-3">
+                                            <input
+                                                type="checkbox"
+                                                checked={r.is_selected}
+                                                disabled
+                                                readOnly
+                                                className="size-4 accent-primary disabled:cursor-not-allowed disabled:opacity-40"
+                                                aria-label={`Select ${r.label}`}
+                                            />
+                                        </td>
+                                        <td className="px-2 py-3 font-medium text-muted-foreground">{r.label}</td>
                                         <td className="px-4 py-3 text-right">
                                             <Pill tone="neutral">Static</Pill>
                                         </td>
