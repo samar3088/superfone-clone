@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Lead;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -38,6 +39,14 @@ class HandleInertiaRequests extends Middleware
                 ] : null,
                 'permissions' => $user ? $user->getAllPermissions()->pluck('name') : [],
             ],
+            // Unread-lead badge on the notifications bell. Lazy so the count
+            // is only queried when a page actually renders the shell.
+            'notifications' => [
+                'unread_leads' => fn () => $user
+                    ? Lead::query()->unreadFor($user)->count()
+                    : 0,
+            ],
+
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),

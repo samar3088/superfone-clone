@@ -15,7 +15,7 @@ class OwnerSeeder extends Seeder
             ['mobile' => '9999900001'],
             [
                 'name' => 'System Owner',
-                'email' => 'owner@superfone.test',
+                'email' => 'owner@varietyvintage.com',
                 'password' => Hash::make('Owner@123'),
                 'is_active' => true,
                 'mobile_verified_at' => now(),

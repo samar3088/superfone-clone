@@ -1,4 +1,4 @@
-import { Head, router, useForm, usePage } from '@inertiajs/react';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import { FormEvent, useEffect, useRef, useState } from 'react';
 
 import { SignalMark } from '@/components/brand/signal-mark';
@@ -77,9 +77,9 @@ export default function Login({ otpLength, resendCooldown }: { otpLength: number
 
                     <div className="relative flex items-center gap-3">
                         <span className="grid size-9 place-items-center rounded-lg bg-primary font-display text-lg font-bold text-primary-foreground">
-                            S
+                            V
                         </span>
-                        <span className="font-display text-xl font-bold tracking-tight">Superfone</span>
+                        <span className="font-display text-xl font-bold tracking-tight">VVT</span>
                     </div>
 
                     <div className="relative max-w-lg">
@@ -113,9 +113,9 @@ export default function Login({ otpLength, resendCooldown }: { otpLength: number
                     <div className="w-full max-w-sm">
                         <div className="mb-9 flex items-center gap-3 lg:hidden">
                             <span className="grid size-9 place-items-center rounded-lg bg-primary font-display text-lg font-bold text-primary-foreground">
-                                S
+                                V
                             </span>
-                            <span className="font-display text-xl font-bold">Superfone</span>
+                            <span className="font-display text-xl font-bold">VVT</span>
                         </div>
 
                         {step === 'mobile' && (
@@ -295,13 +295,21 @@ export default function Login({ otpLength, resendCooldown }: { otpLength: number
                                     {passwordForm.processing ? 'Signing in…' : 'Sign in'}
                                 </button>
 
-                                <button
-                                    type="button"
-                                    onClick={() => setStep('mobile')}
-                                    className="w-full text-sm font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-                                >
-                                    Use a one-time code instead
-                                </button>
+                                <div className="flex flex-col gap-2 text-center text-sm">
+                                    <button
+                                        type="button"
+                                        onClick={() => setStep('mobile')}
+                                        className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                                    >
+                                        Use a one-time code instead
+                                    </button>
+                                    <Link
+                                        href="/forgot-password"
+                                        className="font-medium text-primary underline-offset-4 hover:underline"
+                                    >
+                                        Forgot your password?
+                                    </Link>
+                                </div>
                             </form>
                         )}
                     </div>

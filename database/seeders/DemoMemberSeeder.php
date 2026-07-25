@@ -16,16 +16,16 @@ class DemoMemberSeeder extends Seeder
     public function run(): void
     {
         $members = [
-            ['Aarav Gupta', 'aarav.gupta@superfone.test', '9810000101', true],
-            ['Diya Reddy', 'diya.reddy@superfone.test', '9810000102', true],
-            ['Ishaan Verma', 'ishaan.verma@superfone.test', '9810000103', true],
-            ['Saanvi Iyer', 'saanvi.iyer@superfone.test', '9810000104', true],
-            ['Kabir Singh', 'kabir.singh@superfone.test', '9810000105', false],
-            ['Aadhya Menon', 'aadhya.menon@superfone.test', '9810000106', true],
-            ['Reyansh Jain', 'reyansh.jain@superfone.test', '9810000107', true],
-            ['Anaya Bose', 'anaya.bose@superfone.test', '9810000108', false],
-            ['Vivaan Shah', 'vivaan.shah@superfone.test', '9810000109', true],
-            ['Myra Kapoor', 'myra.kapoor@superfone.test', '9810000110', true],
+            ['Aarav Gupta', 'aarav.gupta@varietyvintage.com', '9810000101', true],
+            ['Diya Reddy', 'diya.reddy@varietyvintage.com', '9810000102', true],
+            ['Ishaan Verma', 'ishaan.verma@varietyvintage.com', '9810000103', true],
+            ['Saanvi Iyer', 'saanvi.iyer@varietyvintage.com', '9810000104', true],
+            ['Kabir Singh', 'kabir.singh@varietyvintage.com', '9810000105', false],
+            ['Aadhya Menon', 'aadhya.menon@varietyvintage.com', '9810000106', true],
+            ['Reyansh Jain', 'reyansh.jain@varietyvintage.com', '9810000107', true],
+            ['Anaya Bose', 'anaya.bose@varietyvintage.com', '9810000108', false],
+            ['Vivaan Shah', 'vivaan.shah@varietyvintage.com', '9810000109', true],
+            ['Myra Kapoor', 'myra.kapoor@varietyvintage.com', '9810000110', true],
         ];
 
         foreach ($members as [$name, $email, $mobile, $active]) {
