@@ -1,5 +1,5 @@
-import { Head, router } from '@inertiajs/react';
-import { useState } from 'react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
+import { ReactNode, useState } from 'react';
 
 import { Button } from '@/components/ui-kit';
 import ConsoleLayout from '@/layouts/console-layout';
@@ -37,6 +37,7 @@ interface Props {
 }
 
 export default function Dashboard({ range, syncedAt, callInsights, customerInsights, staffInsights }: Props) {
+    const { auth } = usePage<{ auth: { user: { is_owner: boolean } } }>().props;
     const [from, setFrom] = useState(range.from);
     const [to, setTo] = useState(range.to);
     const [staffOpen, setStaffOpen] = useState(true);
@@ -220,7 +221,80 @@ export default function Dashboard({ range, syncedAt, callInsights, customerInsig
                     </>
                 )}
             </section>
+
+            {/* Build progress + quick links */}
+            <section className="mt-5 grid gap-4 lg:grid-cols-3">
+                <div className="rounded-xl border border-border bg-card p-6 lg:col-span-2">
+                    <p className="eyebrow">Build progress</p>
+                    <h2 className="mt-2 font-display text-xl font-bold">What&rsquo;s live right now</h2>
+                    <ul className="mt-5 space-y-3.5">
+                        {[
+                            ['done', 'Mobile + OTP sign-in', 'Hashed codes, expiry, attempt limits, resend cooldown'],
+                            ['done', 'Profile & password', 'Update name, email and mobile; set or reset a password'],
+                            ['done', 'Team members', 'Add, edit and remove staff — searchable table and CSV export'],
+                            ['done', 'Customers & leads', 'One customer across campaigns, with duplicate merging'],
+                            ['done', 'Settings', 'Tags, CRM stages and groups, custom fields, Facebook mapping'],
+                            ['done', 'Activity log', 'Every change recorded, with who made it'],
+                            ['next', 'Facebook lead sync', 'Needs a Meta app so live campaign leads flow in'],
+                            ['later', 'Telephony', 'VICI dial calling — these insights fill in once it is connected'],
+                        ].map(([state, heading, detail]) => (
+                            <li key={heading} className="flex gap-3.5">
+                                <StatusDot state={state as 'done' | 'next' | 'later'} />
+                                <div>
+                                    <p className="font-semibold leading-tight">{heading}</p>
+                                    <p className="mt-0.5 text-sm text-muted-foreground">{detail}</p>
+                                </div>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+
+                <div className="rounded-xl border border-border bg-card p-6">
+                    <p className="eyebrow">Quick actions</p>
+                    <h2 className="mt-2 font-display text-xl font-bold">Jump back in</h2>
+                    <div className="mt-4 space-y-2">
+                        <QuickLink href="/leads" label="Review new leads" />
+                        <QuickLink href="/customers" label="Browse customers" />
+                        <QuickLink href="/team" label="Manage team members" />
+                        <QuickLink href="/profile" label="Update my profile" />
+                        {auth.user.is_owner && <QuickLink href="/settings" label="Open settings" />}
+                        {auth.user.is_owner && <QuickLink href="/activity" label="Open activity log" />}
+                    </div>
+                </div>
+            </section>
         </ConsoleLayout>
+    );
+}
+
+function QuickLink({ href, label }: { href: string; label: string }) {
+    return (
+        <Link
+            href={href}
+            className="flex items-center justify-between rounded-lg border border-border px-3.5 py-2.5 text-sm font-medium transition hover:border-primary/40 hover:bg-muted"
+        >
+            {label}
+            <span aria-hidden className="text-muted-foreground">
+                →
+            </span>
+        </Link>
+    );
+}
+
+function StatusDot({ state }: { state: 'done' | 'next' | 'later' }) {
+    const styles = {
+        done: { background: 'var(--good-soft)', color: 'var(--good)', label: '✓' },
+        next: { background: 'var(--accent)', color: 'var(--accent-foreground)', label: '→' },
+        later: { background: 'var(--muted)', color: 'var(--muted-foreground)', label: '·' },
+    }[state];
+
+    return (
+        <span
+            className="mt-0.5 grid size-5 flex-shrink-0 place-items-center rounded-full text-[11px] font-bold"
+            style={{ background: styles.background, color: styles.color }}
+            aria-label={state}
+        >
+            {styles.label}
+        </span>
     );
 }
 
