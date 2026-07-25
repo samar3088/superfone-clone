@@ -3,11 +3,10 @@ import { Head, Link } from '@inertiajs/react';
 import { Column, DataTable, Paginated } from '@/components/data-table';
 import {
     DateRangeFilter,
-    ExportLink,
-    FilterRow,
+    FilterForm,
     Filters,
+    FilterSearch,
     FilterSelect,
-    ResetFilters,
 } from '@/components/table-filters';
 import ConsoleLayout from '@/layouts/console-layout';
 
@@ -33,8 +32,6 @@ export default function CustomersIndex({
     filters: Filters;
     members: { id: number; name: string }[];
 }) {
-    const ctx = { filters, url: '/customers' };
-
     const columns: Column<Customer>[] = [
         {
             key: 'name',
@@ -82,20 +79,25 @@ export default function CustomersIndex({
                 columns={columns}
                 filters={filters}
                 url="/customers"
-                searchPlaceholder="Search name, mobile or email…"
                 emptyTitle="No customers match"
-                emptyHint="Customers are created automatically as leads arrive. Try clearing the filters."
+                emptyHint="Customers are created automatically as leads arrive. Try resetting the filters."
+                ownSearch
                 toolbar={
-                    <FilterRow>
+                    <FilterForm
+                        url="/customers"
+                        filters={filters}
+                        keys={FILTER_KEYS}
+                        exportPath="/customers/export"
+                    >
+                        <FilterSearch placeholder="Search name, mobile or email…" />
+
                         <FilterSelect
-                            ctx={ctx}
                             name="member"
                             label="All members"
                             options={members.map((m) => ({ value: String(m.id), label: m.name }))}
                         />
 
                         <FilterSelect
-                            ctx={ctx}
                             name="leads"
                             label="All customers"
                             options={[
@@ -104,14 +106,8 @@ export default function CustomersIndex({
                             ]}
                         />
 
-                        <DateRangeFilter ctx={ctx} />
-
-                        <ResetFilters ctx={ctx} keys={FILTER_KEYS} />
-
-                        <span className="ml-auto shrink-0">
-                            <ExportLink ctx={ctx} path="/customers/export" />
-                        </span>
-                    </FilterRow>
+                        <DateRangeFilter />
+                    </FilterForm>
                 }
             />
         </ConsoleLayout>

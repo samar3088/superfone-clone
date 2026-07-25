@@ -3,11 +3,10 @@ import { Head, router } from '@inertiajs/react';
 import { Column, DataTable, Paginated } from '@/components/data-table';
 import {
     DateRangeFilter,
-    ExportLink,
-    FilterRow,
+    FilterForm,
     Filters,
+    FilterSearch,
     FilterSelect,
-    ResetFilters,
 } from '@/components/table-filters';
 import { Button, Pill } from '@/components/ui-kit';
 import ConsoleLayout from '@/layouts/console-layout';
@@ -43,8 +42,6 @@ interface Props {
 const FILTER_KEYS = ['search', 'member', 'stage', 'date_from', 'date_to', 'source', 'unread'];
 
 export default function LeadsIndex({ leads, filters, stages, members }: Props) {
-    const ctx = { filters, url: '/leads' };
-
     const columns: Column<Lead>[] = [
         {
             key: 'name',
@@ -121,14 +118,20 @@ export default function LeadsIndex({ leads, filters, stages, members }: Props) {
                 columns={columns}
                 filters={filters}
                 url="/leads"
-                searchPlaceholder="Search name, mobile or campaign…"
                 emptyTitle="No leads match"
-                emptyHint="Try widening the date range or clearing the filters."
+                emptyHint="Try widening the date range, or reset the filters."
+                ownSearch
                 toolbar={
-                    <FilterRow>
+                    <FilterForm
+                        url="/leads"
+                        filters={filters}
+                        keys={FILTER_KEYS}
+                        exportPath="/leads/export"
+                    >
+                        <FilterSearch placeholder="Search name, mobile or campaign…" />
+
                         {members.length > 0 && (
                             <FilterSelect
-                                ctx={ctx}
                                 name="member"
                                 label="All members"
                                 options={[
@@ -139,7 +142,6 @@ export default function LeadsIndex({ leads, filters, stages, members }: Props) {
                         )}
 
                         <FilterSelect
-                            ctx={ctx}
                             name="stage"
                             label="All statuses"
                             options={stages.map((s) => ({
@@ -148,14 +150,8 @@ export default function LeadsIndex({ leads, filters, stages, members }: Props) {
                             }))}
                         />
 
-                        <DateRangeFilter ctx={ctx} />
-
-                        <ResetFilters ctx={ctx} keys={FILTER_KEYS} />
-
-                        <span className="ml-auto shrink-0">
-                            <ExportLink ctx={ctx} path="/leads/export" />
-                        </span>
-                    </FilterRow>
+                        <DateRangeFilter />
+                    </FilterForm>
                 }
             />
         </ConsoleLayout>

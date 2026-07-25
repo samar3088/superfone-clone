@@ -2,7 +2,7 @@ import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { FormEvent, useState } from 'react';
 
 import { Column, DataTable, Paginated } from '@/components/data-table';
-import { ExportLink, FilterRow, Filters, FilterSelect, ResetFilters } from '@/components/table-filters';
+import { FilterForm, Filters, FilterSearch, FilterSelect } from '@/components/table-filters';
 import { Button, Field, Modal, Pill, inputClass } from '@/components/ui-kit';
 import ConsoleLayout from '@/layouts/console-layout';
 
@@ -28,7 +28,6 @@ const FILTER_KEYS = ['search', 'status', 'role'];
 
 export default function TeamIndex({ members, filters, roles }: Props) {
     const { auth } = usePage<{ auth: { user: { id: number; is_owner: boolean } } }>().props;
-    const ctx = { filters, url: '/team' };
     const [editing, setEditing] = useState<Member | null>(null);
     const [creating, setCreating] = useState(false);
     const [confirmDelete, setConfirmDelete] = useState<Member | null>(null);
@@ -118,13 +117,19 @@ export default function TeamIndex({ members, filters, roles }: Props) {
                 columns={columns}
                 filters={filters}
                 url="/team"
-                searchPlaceholder="Search name, email or mobile…"
                 emptyTitle="No team members match"
                 emptyHint="Try a different search, or add your first member."
+                ownSearch
                 toolbar={
-                    <FilterRow>
+                    <FilterForm
+                        url="/team"
+                        filters={filters}
+                        keys={FILTER_KEYS}
+                        exportPath={auth.user.is_owner ? '/team/export' : undefined}
+                    >
+                        <FilterSearch placeholder="Search name, email or mobile…" />
+
                         <FilterSelect
-                            ctx={ctx}
                             name="status"
                             label="All statuses"
                             options={[
@@ -134,21 +139,12 @@ export default function TeamIndex({ members, filters, roles }: Props) {
                         />
 
                         <FilterSelect
-                            ctx={ctx}
                             name="role"
                             label="All roles"
                             className="capitalize"
                             options={roles.map((r) => ({ value: r, label: r }))}
                         />
-
-                        <ResetFilters ctx={ctx} keys={FILTER_KEYS} />
-
-                        {auth.user.is_owner && (
-                            <span className="ml-auto shrink-0">
-                                <ExportLink ctx={ctx} path="/team/export" />
-                            </span>
-                        )}
-                    </FilterRow>
+                    </FilterForm>
                 }
             />
 

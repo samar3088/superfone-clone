@@ -27,6 +27,12 @@ interface Props<T> {
     url: string;
     searchPlaceholder?: string;
     toolbar?: ReactNode;
+    /**
+     * Set when the toolbar carries its own search box, so the two do not
+     * compete — the built-in one applies as you type, a filter form applies on
+     * submit, and having both would fight over the same query key.
+     */
+    ownSearch?: boolean;
     emptyTitle?: string;
     emptyHint?: string;
 }
@@ -43,6 +49,7 @@ export function DataTable<T extends { id: number }>({
     url,
     searchPlaceholder = 'Search…',
     toolbar,
+    ownSearch = false,
     emptyTitle = 'Nothing to show yet',
     emptyHint,
 }: Props<T>) {
@@ -51,7 +58,7 @@ export function DataTable<T extends { id: number }>({
 
     // Debounced so a query fires once the user stops typing, not per keystroke.
     useEffect(() => {
-        if (firstRender.current) {
+        if (ownSearch || firstRender.current) {
             firstRender.current = false;
             return;
         }
@@ -74,11 +81,9 @@ export function DataTable<T extends { id: number }>({
 
     return (
         <div className="space-y-4">
-            {/*
-                One row, scrolling sideways when it runs out of width. Wrapping
-                pushed filters onto a second line and made the toolbar look
-                like two unrelated groups of controls.
-            */}
+            {ownSearch ? (
+                toolbar
+            ) : (
             <div className="flex items-center gap-2 overflow-x-auto pb-0.5">
                 <div className="relative w-56 shrink-0">
                     <svg
@@ -103,6 +108,7 @@ export function DataTable<T extends { id: number }>({
                 </div>
                 {toolbar}
             </div>
+            )}
 
             <div className="overflow-hidden rounded-xl border border-border bg-card">
                 <div className="overflow-x-auto">
