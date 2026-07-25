@@ -1,6 +1,7 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { FormEvent, useEffect, useState } from 'react';
 
+import { FacebookReconnect } from '@/components/facebook-reconnect';
 import { Button, Field, Pill, inputClass } from '@/components/ui-kit';
 import ConsoleLayout from '@/layouts/console-layout';
 
@@ -82,6 +83,7 @@ export default function IntegrationPage({
 }) {
     const [tab, setTab] = useState<'config' | 'logs'>('config');
     const [editing, setEditing] = useState(!integration.is_configured);
+    const [reconnecting, setReconnecting] = useState(false);
 
     return (
         <ConsoleLayout>
@@ -106,14 +108,7 @@ export default function IntegrationPage({
                     {integration.connected_account && (
                         <span className="text-sm font-medium text-primary">{integration.connected_account}</span>
                     )}
-                    {/*
-                        Reconnecting means replacing the stored access token, which
-                        lives under Notifications — there is no OAuth round-trip to
-                        start from here.
-                    */}
-                    <Link href="/settings" title="Replace the Facebook access token under Settings → Notifications">
-                        <Button>Reconnect</Button>
-                    </Link>
+                    <Button onClick={() => setReconnecting(true)}>Reconnect</Button>
                 </div>
             </div>
 
@@ -189,6 +184,13 @@ export default function IntegrationPage({
                 </>
             ) : (
                 <LogsTable logs={logs} />
+            )}
+
+            {reconnecting && (
+                <FacebookReconnect
+                    account={integration.connected_account}
+                    onClose={() => setReconnecting(false)}
+                />
             )}
         </ConsoleLayout>
     );

@@ -2,6 +2,7 @@
 
 namespace App\LeadSources;
 
+use App\Models\Integration;
 use App\Services\Support\SettingsService;
 use App\Support\Settings;
 use Illuminate\Support\Facades\Cache;
@@ -60,6 +61,56 @@ class FacebookLeadSource
         }
 
         return $response->json() ?? [];
+    }
+
+    /**
+     * Check a token against Graph before we commit to it.
+     *
+     * Saving an unverified string is how lead syncing dies quietly: the token
+     * looks fine in the database, and nobody finds out until the next run
+     * fails hours later. This proves the token works and reports whose account
+     * it belongs to, so the person pasting it can confirm it is the right one.
+     *
+     * @return array{name: string, pages: int}
+     *
+     * @throws RuntimeException when Facebook rejects it
+     */
+    public function verifyToken(string $token): array
+    {
+        $me = Http::timeout(15)->get($this->base().'/me', [
+            'access_token' => $token,
+            'fields' => 'id,name',
+        ]);
+
+        if ($me->failed()) {
+            throw new RuntimeException(
+                $me->json('error.message') ?? 'Facebook rejected this token.'
+            );
+        }
+
+        // A token that cannot see any pages cannot read leads either, so the
+        // count is worth surfacing rather than discovering later.
+        $accounts = Http::timeout(15)->get($this->base().'/me/accounts', [
+            'access_token' => $token,
+            'fields' => 'id',
+            'limit' => 100,
+        ]);
+
+        return [
+            'name' => $me->json('name') ?: 'Facebook account',
+            'pages' => count($accounts->json('data') ?? []),
+        ];
+    }
+
+    /** Drop everything derived from the old token. */
+    public function forgetCaches(): void
+    {
+        Cache::forget('fb.pages');
+
+        Integration::query()
+            ->whereNotNull('external_page_id')
+            ->pluck('external_page_id')
+            ->each(fn (string $id) => Cache::forget("fb.page.profile.{$id}"));
     }
 
     public function account(): array

@@ -1,6 +1,7 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { FormEvent, useEffect, useState } from 'react';
 
+import { FacebookReconnect } from '@/components/facebook-reconnect';
 import { Button, Field, Modal, Pill, inputClass } from '@/components/ui-kit';
 import ConsoleLayout from '@/layouts/console-layout';
 
@@ -995,6 +996,7 @@ function CreateIntegrationWizard({ providers, onClose }: { providers: Provider[]
     const [provider, setProvider] = useState<Provider | null>(null);
     const [step, setStep] = useState<1 | 2>(1);
     const [account, setAccount] = useState('');
+    const [reconnecting, setReconnecting] = useState(false);
     const [pages, setPages] = useState<Array<{ id: string; name: string; description: string | null }>>([]);
     const [forms, setForms] = useState<Array<{ id: string; name: string }>>([]);
     const [loadingForms, setLoadingForms] = useState(false);
@@ -1007,15 +1009,19 @@ function CreateIntegrationWizard({ providers, onClose }: { providers: Provider[]
         form_name: '',
     });
 
+    const loadAccount = async () => {
+        const res = await fetch('/settings/integrations/facebook/pages', { headers: { Accept: 'application/json' } });
+        const data = await res.json();
+        setAccount(data.account.name ?? '');
+        setPages(data.pages);
+    };
+
     const choose = async (p: Provider) => {
         if (! p.available) return;
         setProvider(p);
         form.setData('provider', p.key);
 
-        const res = await fetch('/settings/integrations/facebook/pages', { headers: { Accept: 'application/json' } });
-        const data = await res.json();
-        setAccount(data.account.name);
-        setPages(data.pages);
+        await loadAccount();
     };
 
     const pickPage = async (page: { id: string; name: string }) => {
@@ -1067,6 +1073,20 @@ function CreateIntegrationWizard({ providers, onClose }: { providers: Provider[]
 
     /* Facebook wizard */
     return (
+        <>
+        {reconnecting && (
+            <FacebookReconnect
+                account={account}
+                onClose={() => {
+                    setReconnecting(false);
+                    // The new token may reach a different set of pages.
+                    setPages([]);
+                    setForms([]);
+                    form.setData('external_page_id', '');
+                    loadAccount();
+                }}
+            />
+        )}
         <Modal open onClose={onClose} title={provider.label}>
             <div className="-mt-3 mb-5 flex flex-wrap items-center justify-between gap-3">
                 <button onClick={() => setProvider(null)} className="text-sm font-medium text-muted-foreground hover:text-foreground">
@@ -1074,11 +1094,7 @@ function CreateIntegrationWizard({ providers, onClose }: { providers: Provider[]
                 </button>
                 <div className="flex items-center gap-3">
                     <span className="text-sm font-semibold text-primary">{account || '…'}</span>
-                    <Button
-                        variant="ghost"
-                        className="px-3 py-1.5"
-                        onClick={() => alert('Reconnecting needs the Meta app credentials — on the client checklist.')}
-                    >
+                    <Button variant="ghost" className="px-3 py-1.5" onClick={() => setReconnecting(true)}>
                         Reconnect
                     </Button>
                 </div>
@@ -1202,6 +1218,7 @@ function CreateIntegrationWizard({ providers, onClose }: { providers: Provider[]
                 </form>
             )}
         </Modal>
+        </>
     );
 }
 

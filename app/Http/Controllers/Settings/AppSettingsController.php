@@ -5,10 +5,12 @@ namespace App\Http\Controllers\Settings;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\UpdateFacebookTokenRequest;
 use App\Http\Requests\Settings\UpdateNotificationSettingsRequest;
+use App\LeadSources\FacebookLeadSource;
 use App\Services\Support\SettingsService;
 use App\Support\Permissions;
 use App\Support\Settings;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Validation\ValidationException;
 
 class AppSettingsController extends Controller
 {
@@ -40,28 +42,47 @@ class AppSettingsController extends Controller
      * Write-only by design — the value is never sent back to the browser, so
      * the screen can show that a token exists but not what it is.
      */
-    public function updateFacebookToken(UpdateFacebookTokenRequest $request): RedirectResponse
+    public function updateFacebookToken(UpdateFacebookTokenRequest $request, FacebookLeadSource $facebook): RedirectResponse
     {
         $this->guard();
 
-        $this->settings->set(Settings::FACEBOOK_TOKEN, $request->validated('token'));
+        $token = $request->validated('token');
 
-        // Page tokens were derived from the old one and are now stale.
-        cache()->forget('fb.pages');
+        /*
+         | Prove it works before storing it. Otherwise a mistyped or expired
+         | token saves cleanly and lead syncing stops silently — the failure
+         | only shows up on the next scheduled run, hours later.
+         */
+        try {
+            $account = $facebook->verifyToken($token);
+        } catch (\RuntimeException $e) {
+            throw ValidationException::withMessages([
+                'token' => 'Facebook rejected that token: '.$e->getMessage(),
+            ]);
+        }
+
+        $this->settings->set(Settings::FACEBOOK_TOKEN, $token);
+
+        // Page tokens and profiles were derived from the old token.
+        $facebook->forgetCaches();
 
         activity('settings')
             ->causedBy($request->user())
-            ->log('Updated the Facebook access token');
+            ->log("Reconnected Facebook as {$account['name']}");
 
-        return back()->with('success', 'Facebook token saved. It is encrypted at rest.');
+        return back()->with(
+            'success',
+            "Reconnected as {$account['name']} — {$account['pages']} page"
+                .($account['pages'] === 1 ? '' : 's').' available.'
+        );
     }
 
-    public function clearFacebookToken(): RedirectResponse
+    public function clearFacebookToken(FacebookLeadSource $facebook): RedirectResponse
     {
         $this->guard();
 
         $this->settings->forget(Settings::FACEBOOK_TOKEN);
-        cache()->forget('fb.pages');
+        $facebook->forgetCaches();
 
         activity('settings')->causedBy(request()->user())->log('Removed the Facebook access token');
 
