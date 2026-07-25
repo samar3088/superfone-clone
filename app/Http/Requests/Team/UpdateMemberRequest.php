@@ -26,6 +26,7 @@ class UpdateMemberRequest extends FormRequest
                 Rule::unique('users', 'mobile')->ignore($id)->whereNull('deleted_at'),
             ],
             'role' => ['required', Rule::in(Roles::ALL)],
+            'team_id' => ['nullable', 'integer', 'exists:teams,id'],
             'is_active' => ['boolean'],
         ];
     }

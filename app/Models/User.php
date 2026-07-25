@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Support\Roles;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -25,6 +26,7 @@ class User extends Authenticatable
         'password',
         'is_active',
         'must_reset_password',
+        'team_id',
     ];
 
     protected $hidden = [
@@ -58,6 +60,26 @@ class User extends Authenticatable
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs()
             ->useLogName('user');
+    }
+
+    /**
+     * Fall back to the first organisation when nobody names one.
+     *
+     * Belt and braces over setting it in each caller: seeders, factories and a
+     * quick tinker session all create users, and a member with no team drops
+     * out of every team-filtered view without any obvious cause.
+     */
+    protected static function booted(): void
+    {
+        static::creating(function (self $user): void {
+            $user->team_id ??= Team::query()->orderBy('id')->value('id');
+        });
+    }
+
+    /** The organisation this member belongs to. */
+    public function team(): BelongsTo
+    {
+        return $this->belongsTo(Team::class);
     }
 
     public function calls(): HasMany

@@ -58,9 +58,10 @@ export default function ConsoleLayout({
         { label: 'Dashboard', href: '/dashboard', icon: IconGrid },
         { label: 'Leads', href: '/leads', icon: IconSpark },
         { label: 'Customers', href: '/customers', icon: IconContact },
-        { label: 'Team Members', href: '/team', icon: IconUsers },
-        // The organisation itself, as against the roster above it.
-        ...(auth.user?.is_owner ? [{ label: 'Teams', href: '/teams', icon: IconBuilding }] : []),
+        // A single figure for one person, a group for the organisation they
+        // sit in — so the pair reads apart at a glance in a collapsed sidebar.
+        { label: 'Team Members', href: '/team', icon: IconUser },
+        ...(auth.user?.is_owner ? [{ label: 'Teams', href: '/teams', icon: IconUsers }] : []),
         { label: 'Activity Log', href: '/activity', icon: IconPulse },
         ...(auth.user?.is_owner ? [{ label: 'Settings', href: '/settings', icon: IconCog }] : []),
     ];
@@ -222,10 +223,10 @@ const IconUsers = ({ className }: IconProps) => (
     </svg>
 );
 
-const IconBuilding = ({ className }: IconProps) => (
+const IconUser = ({ className }: IconProps) => (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-        <path d="M3 21h18M5 21V5a1 1 0 0 1 1-1h7a1 1 0 0 1 1 1v16M14 21V10h4a1 1 0 0 1 1 1v10" />
-        <path d="M8 8h2M8 12h2M8 16h2" strokeLinecap="round" />
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+        <circle cx="12" cy="7" r="4" />
     </svg>
 );
 

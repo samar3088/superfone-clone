@@ -25,6 +25,7 @@ class StoreMemberRequest extends FormRequest
                 Rule::unique('users', 'mobile')->whereNull('deleted_at'),
             ],
             'role' => ['required', Rule::in(Roles::ALL)],
+            'team_id' => ['nullable', 'integer', 'exists:teams,id'],
             'is_active' => ['boolean'],
             'password' => ['nullable', 'confirmed', Password::min(8)->letters()->numbers()],
         ];

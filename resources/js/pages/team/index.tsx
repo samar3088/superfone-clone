@@ -2,7 +2,7 @@ import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { FormEvent, useState } from 'react';
 
 import { Column, DataTable, Paginated } from '@/components/data-table';
-import { FilterForm, Filters, FilterSearch, FilterSelect } from '@/components/table-filters';
+import { FilterForm, Filters, FilterSearch, FilterSelect, MultiSelect } from '@/components/table-filters';
 import { Button, Field, Modal, Pill, inputClass } from '@/components/ui-kit';
 import ConsoleLayout from '@/layouts/console-layout';
 
@@ -15,18 +15,25 @@ interface Member {
     last_login_at: string | null;
     created_at: string;
     roles: { id: number; name: string }[];
+    team: { id: number; name: string } | null;
+}
+
+interface TeamOption {
+    id: number;
+    name: string;
 }
 
 interface Props {
     members: Paginated<Member>;
     filters: Filters;
     roles: string[];
+    teams: TeamOption[];
 }
 
 /** Everything the Reset button clears. */
-const FILTER_KEYS = ['search', 'status', 'role'];
+const FILTER_KEYS = ['search', 'status', 'role', 'team'];
 
-export default function TeamIndex({ members, filters, roles }: Props) {
+export default function TeamIndex({ members, filters, roles, teams }: Props) {
     const { auth } = usePage<{ auth: { user: { id: number; is_owner: boolean } } }>().props;
     const [editing, setEditing] = useState<Member | null>(null);
     const [creating, setCreating] = useState(false);
@@ -59,6 +66,16 @@ export default function TeamIndex({ members, filters, roles }: Props) {
             key: 'role',
             header: 'Role',
             cell: (m) => <span className="capitalize">{m.roles[0]?.name ?? '—'}</span>,
+        },
+        {
+            key: 'team',
+            header: 'Team',
+            cell: (m) =>
+                m.team ? (
+                    m.team.name
+                ) : (
+                    <span className="text-muted-foreground">No team</span>
+                ),
         },
         {
             key: 'status',
@@ -144,12 +161,19 @@ export default function TeamIndex({ members, filters, roles }: Props) {
                             className="capitalize"
                             options={roles.map((r) => ({ value: r, label: r }))}
                         />
+
+                        <MultiSelect
+                            name="team"
+                            label="All teams"
+                            searchPlaceholder="Search teams…"
+                            options={teams.map((t) => ({ value: String(t.id), label: t.name }))}
+                        />
                     </FilterForm>
                 }
             />
 
-            {creating && <MemberForm roles={roles} onClose={() => setCreating(false)} />}
-            {editing && <MemberForm roles={roles} member={editing} onClose={() => setEditing(null)} />}
+            {creating && <MemberForm roles={roles} teams={teams} onClose={() => setCreating(false)} />}
+            {editing && <MemberForm roles={roles} teams={teams} member={editing} onClose={() => setEditing(null)} />}
 
             <Modal
                 open={!!confirmDelete}
@@ -178,7 +202,17 @@ export default function TeamIndex({ members, filters, roles }: Props) {
     );
 }
 
-function MemberForm({ member, roles, onClose }: { member?: Member; roles: string[]; onClose: () => void }) {
+function MemberForm({
+    member,
+    roles,
+    teams,
+    onClose,
+}: {
+    member?: Member;
+    roles: string[];
+    teams: TeamOption[];
+    onClose: () => void;
+}) {
     const isEdit = !!member;
 
     const form = useForm({
@@ -186,6 +220,9 @@ function MemberForm({ member, roles, onClose }: { member?: Member; roles: string
         email: member?.email ?? '',
         mobile: member?.mobile ?? '',
         role: member?.roles[0]?.name ?? 'member',
+        // Defaults to the only organisation, so a member is never left teamless
+        // just because nobody touched the field.
+        team_id: (member?.team?.id ?? teams[0]?.id ?? '') as number | '',
         is_active: member?.is_active ?? true,
     });
 
@@ -262,6 +299,18 @@ function MemberForm({ member, roles, onClose }: { member?: Member; roles: string
                                 <option key={r} value={r} className="capitalize">
                                     {r}
                                 </option>
+                            ))}
+                        </select>
+                    </Field>
+
+                    <Field label="Team" error={form.errors.team_id} hint="The organisation this member belongs to.">
+                        <select
+                            className={inputClass}
+                            value={form.data.team_id}
+                            onChange={(e) => form.setData('team_id', (Number(e.target.value) || '') as number | '')}
+                        >
+                            {teams.map((t) => (
+                                <option key={t.id} value={t.id}>{t.name}</option>
                             ))}
                         </select>
                     </Field>

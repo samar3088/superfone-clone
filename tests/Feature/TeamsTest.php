@@ -6,6 +6,7 @@ use App\Models\Customer;
 use App\Models\Lead;
 use App\Models\Team;
 use App\Models\User;
+use App\Services\Team\MemberService;
 use Database\Seeders\TeamSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -109,6 +110,104 @@ class TeamsTest extends TestCase
     public function test_guests_are_sent_to_login(): void
     {
         $this->get('/teams')->assertRedirect('/login');
+    }
+
+    /* ── Members belong to a team ─────────────────────── */
+
+    public function test_a_new_member_joins_the_only_organisation_without_being_told_to(): void
+    {
+        $this->seed(TeamSeeder::class);
+
+        $member = app(MemberService::class)->create([
+            'name' => 'Ravi Kumar',
+            'email' => 'ravi@example.com',
+            'mobile' => '9876500055',
+        ]);
+
+        $this->assertSame(Team::sole()->id, $member->fresh()->team_id);
+    }
+
+    public function test_members_can_be_filtered_by_team(): void
+    {
+        $this->seed(TeamSeeder::class);
+
+        $vvt = Team::sole();
+        $other = Team::create(['name' => 'Second Org', 'status' => 'active']);
+
+        User::factory()->member()->create(['name' => 'In VVT', 'team_id' => $vvt->id]);
+        User::factory()->member()->create(['name' => 'In Other', 'team_id' => $other->id]);
+
+        $response = $this->actingAs($this->owner)->get('/team?team='.$other->id);
+        $names = collect($response->viewData('page')['props']['members']['data'])->pluck('name');
+
+        $this->assertSame(['In Other'], $names->all());
+    }
+
+    public function test_the_team_filter_takes_several_teams_at_once(): void
+    {
+        $this->seed(TeamSeeder::class);
+
+        $vvt = Team::sole();
+        $other = Team::create(['name' => 'Second Org', 'status' => 'active']);
+
+        User::factory()->member()->create(['name' => 'In VVT', 'team_id' => $vvt->id]);
+        User::factory()->member()->create(['name' => 'In Other', 'team_id' => $other->id]);
+
+        $response = $this->actingAs($this->owner)->get("/team?team={$vvt->id},{$other->id}");
+        $names = collect($response->viewData('page')['props']['members']['data'])->pluck('name');
+
+        $this->assertContains('In VVT', $names);
+        $this->assertContains('In Other', $names);
+    }
+
+    public function test_the_members_screen_ships_the_team_options_and_each_row_carries_its_team(): void
+    {
+        $this->seed(TeamSeeder::class);
+        $member = User::factory()->member()->create();
+
+        $props = $this->actingAs($this->owner)->get('/team')->viewData('page')['props'];
+
+        $this->assertNotEmpty($props['teams']);
+        $this->assertSame(
+            Team::sole()->name,
+            collect($props['members']['data'])->firstWhere('id', $member->id)['team']['name'],
+        );
+    }
+
+    public function test_a_user_created_before_any_team_exists_still_gets_one_later(): void
+    {
+        // The owner in setUp predates the seeder, which is the shape a fresh
+        // install had before TeamSeeder was moved ahead of the user seeders.
+        $this->assertNull($this->owner->fresh()->team_id);
+
+        $this->seed(TeamSeeder::class);
+
+        $this->assertSame(Team::sole()->id, User::factory()->member()->create()->team_id);
+    }
+
+    public function test_the_member_export_carries_the_team_column(): void
+    {
+        $this->seed(TeamSeeder::class);
+
+        User::factory()->member()->create();
+
+        $csv = $this->actingAs($this->owner)->get('/team/export')->streamedContent();
+
+        $this->assertStringContainsString('Team', $csv);
+        $this->assertStringContainsString(Team::sole()->name, $csv);
+    }
+
+    public function test_removing_a_team_does_not_delete_the_people_in_it(): void
+    {
+        $this->seed(TeamSeeder::class);
+
+        $team = Team::create(['name' => 'Doomed Org', 'status' => 'active']);
+        $member = User::factory()->member()->create(['team_id' => $team->id]);
+
+        $team->delete();
+
+        $this->assertNotNull($member->fresh(), 'The member should survive their team.');
+        $this->assertNull($member->fresh()->team_id);
     }
 
     public function test_teams_and_team_members_stay_separate_screens(): void

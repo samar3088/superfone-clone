@@ -3,8 +3,10 @@
 namespace App\Services\Team;
 
 use App\Mail\MemberWelcomeMail;
+use App\Models\Team;
 use App\Models\User;
 use App\Services\Support\DataTableService;
+use App\Support\FilterList;
 use App\Support\Roles;
 use Illuminate\Contracts\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -25,17 +27,18 @@ class MemberService
     /** The same query, unpaginated, for streaming exports. */
     public function exportQuery(Request $request): Builder
     {
-        return $this->table($request)->query($request);
+        return $this->table($request)->query($request)->with('team:id,name');
     }
 
     private function table(Request $request): DataTableService
     {
-        return DataTableService::for(User::query()->with('roles:id,name'))
-            ->select(['id', 'name', 'email', 'mobile', 'is_active', 'last_login_at', 'created_at'])
+        return DataTableService::for(User::query()->with(['roles:id,name', 'team:id,name']))
+            ->select(['id', 'team_id', 'name', 'email', 'mobile', 'is_active', 'last_login_at', 'created_at'])
             ->searchable(['name', 'email', 'mobile'])
             ->sortable(['name', 'email', 'mobile', 'created_at', 'last_login_at'])
             ->filter('status', fn (Builder $q, $v) => $q->where('is_active', $v === 'active'))
             ->filter('role', fn (Builder $q, $v) => $q->whereHas('roles', fn ($r) => $r->where('name', $v)))
+            ->filter('team', fn (Builder $q, $v) => $q->whereIn('team_id', FilterList::ids($v)))
             ->defaultSort('id', 'desc');
     }
 
@@ -58,6 +61,9 @@ class MemberService
                 'email' => $data['email'],
                 'mobile' => $data['mobile'],
                 'is_active' => $data['is_active'] ?? true,
+                // Falls back to the only organisation, so a member is never
+                // orphaned just because the form did not offer a choice.
+                'team_id' => $data['team_id'] ?? Team::query()->orderBy('id')->value('id'),
                 'password' => Hash::make($data['password'] ?? $temporary),
                 // An owner who typed a password has chosen it deliberately;
                 // only our generated one has to be replaced.
@@ -107,6 +113,7 @@ class MemberService
                 'email' => $data['email'],
                 'mobile' => $data['mobile'],
                 'is_active' => $data['is_active'] ?? $member->is_active,
+                'team_id' => $data['team_id'] ?? $member->team_id,
             ]);
 
             if ($member->isDirty('mobile')) {

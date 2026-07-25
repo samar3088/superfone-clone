@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Team;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Team\StoreMemberRequest;
 use App\Http\Requests\Team\UpdateMemberRequest;
+use App\Models\Team;
 use App\Models\User;
 use App\Services\Support\ExportService;
 use App\Services\Team\MemberService;
@@ -29,8 +30,9 @@ class MemberController extends Controller
 
         return Inertia::render('team/index', [
             'members' => $this->members->paginate($request),
-            'filters' => $request->only(['search', 'status', 'role', 'sort', 'direction', 'per_page']),
+            'filters' => $request->only(['search', 'status', 'role', 'team', 'sort', 'direction', 'per_page']),
             'roles' => Roles::ALL,
+            'teams' => Team::orderBy('name')->get(['id', 'name']),
         ]);
     }
 
@@ -68,12 +70,13 @@ class MemberController extends Controller
 
         return $this->exports->streamCsv(
             $this->members->exportQuery($request),
-            ['Name', 'Email', 'Mobile', 'Role', 'Status', 'Last login', 'Added on'],
+            ['Name', 'Email', 'Mobile', 'Role', 'Team', 'Status', 'Last login', 'Added on'],
             fn (User $u) => [
                 $u->name,
                 $u->email,
                 $u->mobile,
                 $u->roles->pluck('name')->implode(', '),
+                $u->team?->name ?? '',
                 $u->is_active ? 'Active' : 'Inactive',
                 $u->last_login_at?->toDateTimeString() ?? '',
                 $u->created_at->toDateTimeString(),

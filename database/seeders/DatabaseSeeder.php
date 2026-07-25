@@ -11,9 +11,11 @@ class DatabaseSeeder extends Seeder
         $this->call([
             PermissionSeeder::class,
             RoleSeeder::class,
+            // Before the people: a user created with no organisation to join
+            // would land teamless.
+            TeamSeeder::class,
             OwnerSeeder::class,
             DemoMemberSeeder::class,
-            TeamSeeder::class,
             CrmSettingsSeeder::class,
             DemoCrmDataSeeder::class,
         ]);
