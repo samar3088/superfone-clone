@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\Crm\CustomerService;
 use App\Services\Support\DataTableService;
 use App\Services\Support\ExportService;
+use App\Support\FilterList;
 use App\Support\Roles;
 use Illuminate\Contracts\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -102,7 +103,7 @@ class CustomerController extends Controller
             // A customer has no owner of their own — they belong to whoever is
             // working their enquiries, so this reads through their leads.
             ->filter('member', fn (Builder $q, $v) => $q->whereHas(
-                'leads', fn (Builder $l) => $l->where('assigned_to', $v)
+                'leads', fn (Builder $l) => $l->whereIn('assigned_to', FilterList::ids($v))
             ))
             ->filter('leads', fn (Builder $q, $v) => $v === 'with'
                 ? $q->has('leads')

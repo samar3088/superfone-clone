@@ -6,7 +6,7 @@ import {
     FilterForm,
     Filters,
     FilterSearch,
-    FilterSelect,
+    MultiSelect,
 } from '@/components/table-filters';
 import { Button, Pill } from '@/components/ui-kit';
 import ConsoleLayout from '@/layouts/console-layout';
@@ -131,9 +131,10 @@ export default function LeadsIndex({ leads, filters, stages, members }: Props) {
                         <FilterSearch placeholder="Search name, mobile or campaign…" />
 
                         {members.length > 0 && (
-                            <FilterSelect
+                            <MultiSelect
                                 name="member"
                                 label="All members"
+                                searchPlaceholder="Search members…"
                                 options={[
                                     { value: 'unassigned', label: 'Unassigned' },
                                     ...members.map((m) => ({ value: String(m.id), label: m.name })),
@@ -141,9 +142,10 @@ export default function LeadsIndex({ leads, filters, stages, members }: Props) {
                             />
                         )}
 
-                        <FilterSelect
+                        <MultiSelect
                             name="stage"
                             label="All statuses"
+                            searchPlaceholder="Search statuses…"
                             options={stages.map((s) => ({
                                 value: String(s.id),
                                 label: s.emoji ? `${s.emoji} ${s.name}` : s.name,

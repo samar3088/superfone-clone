@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\Crm\LeadService;
 use App\Services\Support\DataTableService;
 use App\Services\Support\ExportService;
+use App\Support\FilterList;
 use App\Support\Roles;
 use Illuminate\Contracts\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -79,14 +80,32 @@ class LeadController extends Controller
             ->searchable(['name', 'mobile', 'email', 'campaign'])
             ->sortable(['name', 'created_at', 'source'])
             ->filter('source', fn (Builder $q, $v) => $q->where('source', $v))
-            ->filter('stage', fn (Builder $q, $v) => $q->where('lead_stage_id', $v))
+            ->filter('stage', fn (Builder $q, $v) => $q->whereIn('lead_stage_id', FilterList::ids($v)))
             ->filter('unread', fn (Builder $q) => $q->whereNull('viewed_at'))
-            // A member filter would let a member widen their own scope, so it
-            // is ignored for anyone but an owner. "unassigned" is a real state
-            // worth filtering on, hence the sentinel.
-            ->filter('member', fn (Builder $q, $v) => $user->isOwner()
-                ? ($v === 'unassigned' ? $q->whereNull('assigned_to') : $q->where('assigned_to', $v))
-                : $q)
+            /*
+             | Ignored for anyone but an owner — members are already scoped to
+             | their own leads, and honouring this would let a hand-edited URL
+             | widen that. "unassigned" is a real state, so it rides alongside
+             | the ids as a word and is OR-ed in.
+             */
+            ->filter('member', function (Builder $q, $v) use ($user) {
+                if (! $user->isOwner()) {
+                    return $q;
+                }
+
+                $ids = FilterList::ids($v);
+                $wantsUnassigned = in_array('unassigned', FilterList::parse($v), true);
+
+                return $q->where(function (Builder $group) use ($ids, $wantsUnassigned) {
+                    if ($ids !== []) {
+                        $group->whereIn('assigned_to', $ids);
+                    }
+
+                    if ($wantsUnassigned) {
+                        $group->orWhereNull('assigned_to');
+                    }
+                });
+            })
             // whereDate on the end so a lead created at 18:40 still falls
             // inside a range ending on its own date.
             ->filter('date_from', fn (Builder $q, $v) => $q->whereDate('created_at', '>=', $v))

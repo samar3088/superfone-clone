@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests\Crm;
 
+use App\Support\FilterList;
+use Closure;
 use Illuminate\Foundation\Http\FormRequest;
 
 /** Validates the Customers screen's query string, for the table and the export. */
@@ -16,7 +18,12 @@ class CustomerFilterRequest extends FormRequest
     {
         return [
             'search' => ['nullable', 'string', 'max:120'],
-            'member' => ['nullable', 'integer', 'exists:users,id'],
+            // Comma-joined list from the multi-select picker.
+            'member' => ['nullable', 'string', 'max:200', function (string $a, mixed $v, Closure $fail) {
+                if (! FilterList::isValid($v)) {
+                    $fail('That filter value is not valid.');
+                }
+            }],
             'leads' => ['nullable', 'in:with,without'],
             'date_from' => ['nullable', 'date_format:Y-m-d'],
             'date_to' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:date_from'],

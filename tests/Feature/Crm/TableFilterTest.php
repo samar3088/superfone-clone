@@ -229,6 +229,86 @@ class TableFilterTest extends TestCase
         $this->assertSame(['Bob Lead'], $names->all());
     }
 
+    /* ── Multi-select ─────────────────────────────────── */
+
+    public function test_selecting_two_members_returns_both_of_their_leads(): void
+    {
+        $this->assertSame(
+            ['Bob Lead', 'New Alice Lead', 'Old Alice Lead'],
+            $this->leadNames(['member' => "{$this->alice->id},{$this->bob->id}"]),
+        );
+    }
+
+    public function test_a_member_and_unassigned_can_be_selected_together(): void
+    {
+        $this->assertSame(
+            ['New Alice Lead', 'Nobody Lead', 'Old Alice Lead'],
+            $this->leadNames(['member' => "{$this->alice->id},unassigned"]),
+        );
+    }
+
+    public function test_selecting_two_statuses_returns_both(): void
+    {
+        $this->assertCount(4, $this->leadNames(['stage' => "{$this->newStage->id},{$this->won->id}"]));
+    }
+
+    public function test_a_multi_select_still_narrows_rather_than_widens(): void
+    {
+        // Two members chosen, but only Alice's leads sit in the Won stage.
+        $this->assertSame(
+            ['New Alice Lead'],
+            $this->leadNames([
+                'member' => "{$this->alice->id},{$this->bob->id}",
+                'stage' => (string) $this->won->id,
+            ]),
+        );
+    }
+
+    public function test_a_member_cannot_widen_their_scope_with_a_list_either(): void
+    {
+        $this->assertSame(
+            ['New Alice Lead', 'Old Alice Lead'],
+            $this->leadNames(['member' => "{$this->alice->id},{$this->bob->id},unassigned"], $this->alice),
+        );
+    }
+
+    public function test_a_junk_entry_in_the_list_is_rejected(): void
+    {
+        $this->actingAs($this->owner)
+            ->get('/leads?member=3,DROP%20TABLE')
+            ->assertSessionHasErrors('member');
+    }
+
+    public function test_an_id_that_no_longer_exists_simply_matches_nothing(): void
+    {
+        // Not an error: a bookmark pointing at a deleted member should still load.
+        $this->actingAs($this->owner)
+            ->get('/leads?member=999999')
+            ->assertOk()
+            ->assertSessionHasNoErrors();
+    }
+
+    public function test_customers_can_be_filtered_by_several_members_at_once(): void
+    {
+        $response = $this->actingAs($this->owner)
+            ->get('/customers?member='.$this->alice->id.','.$this->bob->id);
+
+        $names = collect($response->viewData('page')['props']['customers']['data'])->pluck('name')->sort()->values();
+
+        $this->assertSame(['Bob Lead', 'New Alice Lead', 'Old Alice Lead'], $names->all());
+    }
+
+    public function test_the_export_honours_a_multi_select(): void
+    {
+        $csv = $this->actingAs($this->owner)
+            ->get('/leads/export?member='.$this->alice->id.','.$this->bob->id)
+            ->streamedContent();
+
+        $this->assertStringContainsString('Bob Lead', $csv);
+        $this->assertStringContainsString('Old Alice Lead', $csv);
+        $this->assertStringNotContainsString('Nobody Lead', $csv);
+    }
+
     /* ── The dropdowns need data to render ────────────── */
 
     public function test_the_leads_screen_ships_the_options_its_dropdowns_need(): void

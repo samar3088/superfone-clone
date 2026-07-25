@@ -7,6 +7,7 @@ import {
     Filters,
     FilterSearch,
     FilterSelect,
+    MultiSelect,
 } from '@/components/table-filters';
 import ConsoleLayout from '@/layouts/console-layout';
 
@@ -91,9 +92,10 @@ export default function CustomersIndex({
                     >
                         <FilterSearch placeholder="Search name, mobile or email…" />
 
-                        <FilterSelect
+                        <MultiSelect
                             name="member"
                             label="All members"
+                            searchPlaceholder="Search members…"
                             options={members.map((m) => ({ value: String(m.id), label: m.name }))}
                         />
 
