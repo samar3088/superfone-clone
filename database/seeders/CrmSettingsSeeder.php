@@ -26,6 +26,13 @@ class CrmSettingsSeeder extends Seeder
             Tag::updateOrCreate(['name' => $name], ['color' => $color, 'emoji' => $emoji]);
         }
 
+        /*
+         | The pipeline the client already works to, in their order.
+         |
+         | Only one stage may be INITIAL — it is where a new lead lands. The two
+         | FINAL types are what the dashboard counts as won and lost; everything
+         | else is a step along the way and stays NONE.
+         */
         $stages = [
             ['New Inquiry', 'INITIAL', '🆕'],
             ['Quotation Sent', 'NONE', '📄'],
@@ -36,12 +43,25 @@ class CrmSettingsSeeder extends Seeder
             ['Future Follow-up', 'NONE', '🔮'],
             ['No Response', 'NONE', null],
             ['Follow up', 'NONE', null],
+            ['Registered', 'NONE', null],
+            ['Already converted', 'NONE', null],
+            ['Matrimony query', 'NONE', null],
+            ['Cold', 'FINAL_NEGATIVE', null],
+            ['No Requirement', 'NONE', null],
         ];
+
         foreach ($stages as $i => [$name, $type, $emoji]) {
-            LeadStage::updateOrCreate(
-                ['name' => $name],
-                ['type' => $type, 'emoji' => $emoji, 'sequence' => $i + 1, 'is_active' => true]
-            );
+            $stage = LeadStage::firstOrNew(['name' => $name]);
+
+            $stage->fill(['type' => $type, 'emoji' => $emoji, 'sequence' => $i + 1]);
+
+            // Only on creation: re-running the seeder must not switch a stage
+            // back on that an owner has deliberately turned off.
+            if (! $stage->exists) {
+                $stage->is_active = true;
+            }
+
+            $stage->save();
         }
 
         LeadGroup::updateOrCreate(['name' => 'Customers'], ['type' => 'DEFAULT', 'is_active' => true]);
