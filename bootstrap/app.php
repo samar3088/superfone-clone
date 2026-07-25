@@ -38,9 +38,16 @@ return Application::configure(basePath: dirname(__DIR__))
                 return $response;
             }
 
-            return back()->withInput($request->except('password', 'code'))->with(
-                'error',
-                'Your session timed out for security. Please try that again.'
-            );
+            /*
+             | Deliberately do NOT regenerate the token here. Laravel attaches
+             | the XSRF-TOKEN cookie inside the CSRF middleware, which has
+             | already thrown by this point — rotating the session token would
+             | leave the browser holding the old cookie and mismatching forever.
+             | The redirect re-renders the page, and that response carries a
+             | matching cookie.
+             */
+            return back()
+                ->withInput($request->except('password', 'code', '_token'))
+                ->with('error', 'Your session timed out for security. Please try that again.');
         });
     })->create();
