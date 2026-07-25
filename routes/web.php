@@ -107,6 +107,7 @@ Route::middleware('auth')->group(function () {
         Route::post('integrations', [IntegrationController::class, 'store'])->name('integrations.store');
         Route::get('integrations/{integration}', [IntegrationController::class, 'show'])->name('integrations.show');
         Route::patch('integrations/{integration}/settings', [IntegrationController::class, 'updateSettings'])->name('integrations.settings');
+        Route::post('integrations/{integration}/sync', [IntegrationController::class, 'sync'])->name('integrations.sync');
         Route::patch('integrations/{integration}/toggle', [IntegrationController::class, 'toggle'])->name('integrations.toggle');
         Route::delete('integrations/{integration}', [IntegrationController::class, 'destroy'])->name('integrations.destroy');
     });

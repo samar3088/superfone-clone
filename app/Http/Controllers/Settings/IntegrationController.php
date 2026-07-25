@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\StoreIntegrationRequest;
 use App\Http\Requests\Settings\UpdateIntegrationSettingsRequest;
 use App\LeadSources\FacebookLeadSource;
+use App\Services\Crm\FacebookSyncService;
 use App\Models\Integration;
 use App\Models\LeadGroup;
 use App\Models\LeadStage;
@@ -118,6 +119,26 @@ class IntegrationController extends Controller
         $integration->tags()->sync($data['tag_ids'] ?? []);
 
         return back()->with('success', 'Integration settings saved.');
+    }
+
+    /** Pull new leads from the connected form on demand. */
+    public function sync(Integration $integration, FacebookSyncService $sync): RedirectResponse
+    {
+        $this->guard();
+
+        try {
+            $result = $sync->sync($integration);
+        } catch (\Throwable $e) {
+            // Already recorded on the Logs tab by the service.
+            return back()->with('error', 'Sync failed: '.$e->getMessage());
+        }
+
+        return back()->with(
+            'success',
+            $result['imported'] > 0
+                ? "Imported {$result['imported']} new lead(s)."
+                : 'Already up to date — no new leads.'
+        );
     }
 
     public function toggle(Integration $integration): RedirectResponse

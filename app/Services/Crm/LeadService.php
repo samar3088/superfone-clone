@@ -31,6 +31,7 @@ class LeadService
             );
 
             $lead = Lead::create([
+                'external_id' => $payload['external_id'] ?? null,
                 'customer_id' => $customer->id,
                 'name' => $payload['name'],
                 'mobile' => $payload['mobile'],
