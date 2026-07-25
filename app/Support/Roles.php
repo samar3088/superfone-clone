@@ -9,6 +9,7 @@ namespace App\Support;
 final class Roles
 {
     public const OWNER = 'owner';    // administrator — cannot be deleted
+
     public const MEMBER = 'member';  // team member
 
     public const ALL = [self::OWNER, self::MEMBER];

@@ -1,5 +1,5 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 
 import { Button, Field, Modal, Pill, inputClass } from '@/components/ui-kit';
 import ConsoleLayout from '@/layouts/console-layout';
@@ -12,7 +12,8 @@ interface Priority { id: number; section: string; field_key: string; label: stri
 interface Member { id: number; name: string }
 interface Integration {
     id: number; name: string; provider: string; page_name: string | null; form_name: string | null;
-    connected_account: string | null; status: string; created_at: string; is_configured: boolean;
+    connected_account: string | null; status: string; created_at: string; created_ago: string;
+    is_configured: boolean; needs_settings: boolean; needs_mapping: boolean; company: string;
     members: Member[]; creator: { id: number; name: string } | null;
 }
 interface Provider {
@@ -746,6 +747,7 @@ function IntegrationsTab({
 }) {
     const [filter, setFilter] = useState('');
     const [wizard, setWizard] = useState(false);
+    const [preview, setPreview] = useState<Integration | null>(null);
 
     const visible = filter ? integrations.filter((i) => i.provider === filter) : integrations;
     const tabs = [{ key: '', label: 'All' }, ...providerTabs.map((k) => providers.find((p) => p.key === k)!)
@@ -786,47 +788,12 @@ function IntegrationsTab({
 
             <div className="mt-4 space-y-4">
                 {visible.map((it) => (
-                    <Link
+                    <IntegrationCard
                         key={it.id}
-                        href={`/settings/integrations/${it.id}`}
-                        className="block rounded-xl border border-border bg-card p-5 transition hover:border-primary/40"
-                    >
-                        <div className="flex flex-wrap items-start justify-between gap-3">
-                            <div className="flex items-center gap-3">
-                                <ProviderBadge provider={it.provider} providers={providers} size="size-10 text-base" />
-                                <div>
-                                    <p className="font-display text-base font-bold">{it.name}</p>
-                                    <p className="text-xs text-muted-foreground">
-                                        Created by {it.creator?.name ?? 'system'}
-                                    </p>
-                                </div>
-                            </div>
-                            <Pill tone={it.status === 'active' ? 'good' : 'neutral'}>{it.status.toUpperCase()}</Pill>
-                        </div>
-
-                        <div className="mt-3 flex flex-wrap items-center gap-2">
-                            <Pill tone={it.is_configured ? 'good' : 'warn'}>
-                                {it.is_configured ? '✓ Complete' : 'Needs setup'}
-                            </Pill>
-                            {it.page_name && (
-                                <span className="text-sm text-muted-foreground">
-                                    Page: <b className="text-foreground">{it.page_name}</b>
-                                </span>
-                            )}
-                            {it.form_name && (
-                                <span className="text-sm text-muted-foreground">
-                                    Form: <b className="text-foreground">{it.form_name}</b>
-                                </span>
-                            )}
-                        </div>
-
-                        {it.connected_account && (
-                            <p className="mt-2 flex items-center gap-2 text-sm font-medium text-primary">
-                                <ProviderBadge provider={it.provider} providers={providers} size="size-4 text-[9px]" />
-                                {it.connected_account}
-                            </p>
-                        )}
-                    </Link>
+                        integration={it}
+                        providers={providers}
+                        onPreview={() => setPreview(it)}
+                    />
                 ))}
 
                 {visible.length === 0 && (
@@ -840,7 +807,183 @@ function IntegrationsTab({
             </div>
 
             {wizard && <CreateIntegrationWizard providers={providers} onClose={() => setWizard(false)} />}
+            {preview && <IntegrationPreview integration={preview} onClose={() => setPreview(null)} />}
         </>
+    );
+}
+
+function IntegrationCard({
+    integration: it,
+    providers,
+    onPreview,
+}: {
+    integration: Integration;
+    providers: Provider[];
+    onPreview: () => void;
+}) {
+    return (
+        <div className="rounded-xl border border-border bg-card p-5 transition hover:border-primary/40">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="flex items-center gap-3">
+                    <ProviderBadge provider={it.provider} providers={providers} size="size-10 text-base" />
+                    <p className="font-display text-base font-bold">{it.name}</p>
+                </div>
+
+                <div className="flex items-center gap-3">
+                    <button
+                        type="button"
+                        onClick={onPreview}
+                        aria-label={`Preview ${it.name}`}
+                        title="Preview the connected page"
+                        className="text-muted-foreground transition hover:text-foreground"
+                    >
+                        <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+                            <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z" />
+                            <circle cx="12" cy="12" r="3" />
+                        </svg>
+                    </button>
+
+                    <Link
+                        href={`/settings/integrations/${it.id}`}
+                        aria-label={`Edit ${it.name}`}
+                        title="Open settings"
+                        className="text-muted-foreground transition hover:text-foreground"
+                    >
+                        <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+                            <path d="M12 20h9" strokeLinecap="round" />
+                            <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" strokeLinejoin="round" />
+                        </svg>
+                    </Link>
+
+                    <span
+                        className="flex items-center gap-1.5 text-xs font-bold tracking-wide"
+                        style={{ color: it.status === 'active' ? 'var(--good)' : 'var(--muted-foreground)' }}
+                    >
+                        <span className="size-1.5 rounded-full" style={{ background: 'currentColor' }} aria-hidden />
+                        {it.status.toUpperCase()}
+                    </span>
+                </div>
+            </div>
+
+            <div className="mt-3 flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0">
+                    {/*
+                        Two separate gaps, because they fail differently: no routing
+                        rules means an arriving lead has nowhere to go, no mapped
+                        members means it arrives but lands on nobody.
+                    */}
+                    <div className="flex flex-wrap items-center gap-2">
+                        {it.is_configured ? (
+                            <Pill tone="good">✓ Complete</Pill>
+                        ) : (
+                            <>
+                                {it.needs_mapping && <Pill tone="bad">Mapping Pending</Pill>}
+                                {it.needs_settings && <Pill tone="bad">Settings Pending</Pill>}
+                            </>
+                        )}
+                    </div>
+
+                    <p className="mt-2.5 text-sm text-muted-foreground">
+                        {it.page_name && (
+                            <>Page: <b className="font-medium text-foreground">{it.page_name}</b></>
+                        )}
+                        {it.page_name && it.form_name && <span className="mx-2 text-border">|</span>}
+                        {it.form_name && (
+                            <>Form: <b className="font-medium text-foreground">{it.form_name}</b></>
+                        )}
+                    </p>
+
+                    {it.connected_account && (
+                        <p className="mt-2 flex items-center gap-2 text-sm font-medium text-primary">
+                            <ProviderBadge provider={it.provider} providers={providers} size="size-4 text-[9px]" />
+                            {it.connected_account}
+                        </p>
+                    )}
+
+                    <p className="mt-2 text-xs text-muted-foreground">Created {it.created_ago}</p>
+                </div>
+
+                <div className="text-right text-sm">
+                    <p className="font-semibold uppercase tracking-wide text-foreground">{it.company}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                        Created by <b className="text-foreground">{it.creator?.name ?? 'system'}</b>
+                    </p>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+interface PageProfile {
+    name: string;
+    picture: string;
+    cover: string | null;
+    about: string | null;
+}
+
+/**
+ * Eye icon: a look at the connected page without leaving the list.
+ *
+ * The cover and blurb are fetched when the modal opens rather than stored —
+ * Facebook's cover urls are signed and expire, so a saved copy would rot into
+ * a broken image within days.
+ */
+function IntegrationPreview({ integration, onClose }: { integration: Integration; onClose: () => void }) {
+    const [data, setData] = useState<{ profile: PageProfile | null } | null>(null);
+    const [failed, setFailed] = useState(false);
+
+    useEffect(() => {
+        fetch(`/settings/integrations/${integration.id}/preview`, {
+            headers: { Accept: 'application/json' },
+        })
+            .then((r) => (r.ok ? r.json() : Promise.reject()))
+            .then(setData)
+            .catch(() => setFailed(true));
+    }, [integration.id]);
+
+    const profile = data?.profile ?? null;
+
+    return (
+        <Modal open onClose={onClose} title={integration.page_name ?? integration.name} wide hideHeader>
+            <div className="grid gap-6 sm:grid-cols-2">
+                <div>
+                    {profile?.cover ? (
+                        <img
+                            src={profile.cover}
+                            alt={`${integration.page_name ?? 'Page'} cover`}
+                            className="w-full rounded-lg border border-border object-cover"
+                        />
+                    ) : (
+                        <div className="grid h-36 w-full place-items-center rounded-lg border border-border bg-muted text-sm text-muted-foreground">
+                            {failed ? 'Cover unavailable' : data ? 'No cover photo' : 'Loading…'}
+                        </div>
+                    )}
+                </div>
+
+                <div>
+                    <div className="flex items-start gap-3">
+                        {profile?.picture && (
+                            <img
+                                src={profile.picture}
+                                alt=""
+                                className="size-11 shrink-0 rounded-full border border-border object-cover"
+                            />
+                        )}
+                        <div className="min-w-0">
+                            <p className="font-display text-lg font-bold">{integration.page_name}</p>
+                            {profile?.about && (
+                                <p className="mt-1 text-sm text-muted-foreground">{profile.about}</p>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="mt-5 rounded-lg border border-border p-4">
+                        <p className="eyebrow">Connected form</p>
+                        <p className="mt-1.5 font-medium">{integration.form_name}</p>
+                    </div>
+                </div>
+            </div>
+        </Modal>
     );
 }
 

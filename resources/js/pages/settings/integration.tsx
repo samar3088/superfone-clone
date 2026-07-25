@@ -1,5 +1,5 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 
 import { Button, Field, Pill, inputClass } from '@/components/ui-kit';
 import ConsoleLayout from '@/layouts/console-layout';
@@ -28,10 +28,30 @@ interface Integration {
     todo_due_value: number | null;
     todo_due_unit: string | null;
     notify_enabled: boolean;
+    notify_value: number | null;
+    notify_unit: string | null;
+    existing_lead_enabled: boolean;
+    existing_todo_enabled: boolean;
+    existing_todo_type: string | null;
+    existing_todo_title: string | null;
+    existing_todo_due_value: number | null;
+    existing_todo_due_unit: string | null;
+    existing_notify_enabled: boolean;
+    existing_notify_value: number | null;
+    existing_notify_unit: string | null;
+    created_at: string;
+    page_picture: string | null;
     members: Named[];
     tags: Named[];
     lead_stage: Named | null;
     lead_group: Named | null;
+}
+
+interface PageProfile {
+    name: string;
+    picture: string;
+    cover: string | null;
+    about: string | null;
 }
 
 interface LogRow {
@@ -78,15 +98,49 @@ export default function IntegrationPage({
                 <div>
                     <h1 className="font-display text-2xl font-bold">{integration.name}</h1>
                     <p className="text-sm text-muted-foreground">
-                        {integration.connected_account} · {integration.leads_count} lead
-                        {integration.leads_count === 1 ? '' : 's'} received
+                        {integration.leads_count} lead{integration.leads_count === 1 ? '' : 's'} received
                     </p>
                 </div>
 
-                <div className="ml-auto flex items-center gap-3">
-                    <Pill tone={integration.status === 'active' ? 'good' : 'neutral'}>
+                <div className="ml-auto flex items-center gap-4">
+                    {integration.connected_account && (
+                        <span className="text-sm font-medium text-primary">{integration.connected_account}</span>
+                    )}
+                    {/*
+                        Reconnecting means replacing the stored access token, which
+                        lives under Notifications — there is no OAuth round-trip to
+                        start from here.
+                    */}
+                    <Link href="/settings" title="Replace the Facebook access token under Settings → Notifications">
+                        <Button>Reconnect</Button>
+                    </Link>
+                </div>
+            </div>
+
+            {/* Tabs + status */}
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-border">
+                <div className="flex gap-1">
+                    {(['config', 'logs'] as const).map((t) => (
+                        <button
+                            key={t}
+                            onClick={() => setTab(t)}
+                            className={`-mb-px border-b-2 px-4 py-2.5 text-sm font-semibold transition ${
+                                tab === t ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
+                            }`}
+                        >
+                            {t === 'config' ? 'Configuration' : 'Logs'}
+                        </button>
+                    ))}
+                </div>
+
+                <div className="flex items-center gap-2.5 pb-2">
+                    <span
+                        className="flex items-center gap-1.5 text-xs font-bold tracking-wide"
+                        style={{ color: integration.status === 'active' ? 'var(--good)' : 'var(--muted-foreground)' }}
+                    >
+                        <span className="size-1.5 rounded-full" style={{ background: 'currentColor' }} aria-hidden />
                         {integration.status.toUpperCase()}
-                    </Pill>
+                    </span>
                     <button
                         type="button"
                         role="switch"
@@ -119,41 +173,9 @@ export default function IntegrationPage({
                 </div>
             )}
 
-            {/* Tabs */}
-            <div className="mb-5 flex gap-1 border-b border-border">
-                {(['config', 'logs'] as const).map((t) => (
-                    <button
-                        key={t}
-                        onClick={() => setTab(t)}
-                        className={`-mb-px border-b-2 px-4 py-2.5 text-sm font-semibold transition ${
-                            tab === t ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
-                        }`}
-                    >
-                        {t === 'config' ? 'Configuration' : 'Logs'}
-                    </button>
-                ))}
-            </div>
-
             {tab === 'config' ? (
                 <>
-                    {/* Connected page + form */}
-                    <section className="rounded-xl border border-border bg-card p-5">
-                        <div className="grid gap-5 sm:grid-cols-2">
-                            <div>
-                                <p className="eyebrow">Connected page</p>
-                                <p className="mt-2 font-display text-lg font-bold">{integration.page_name}</p>
-                                {integration.page_description && (
-                                    <p className="mt-1 text-sm text-muted-foreground">{integration.page_description}</p>
-                                )}
-                            </div>
-                            <div>
-                                <p className="eyebrow">Lead form</p>
-                                <div className="mt-2 rounded-lg border border-border p-3.5">
-                                    <p className="font-medium">{integration.form_name}</p>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
+                    <PageCard integration={integration} />
 
                     {editing ? (
                         <SettingsForm
@@ -172,66 +194,121 @@ export default function IntegrationPage({
     );
 }
 
+/**
+ * The connected page, with its cover and blurb pulled live from Facebook.
+ *
+ * Not stored: cover urls are signed and expire, so a saved copy becomes a
+ * broken image within days. The avatar comes from the stable /picture endpoint.
+ */
+function PageCard({ integration }: { integration: Integration }) {
+    const [profile, setProfile] = useState<PageProfile | null>(null);
+    const [done, setDone] = useState(false);
+
+    useEffect(() => {
+        fetch(`/settings/integrations/${integration.id}/preview`, { headers: { Accept: 'application/json' } })
+            .then((r) => (r.ok ? r.json() : Promise.reject()))
+            .then((d) => setProfile(d.profile))
+            .catch(() => undefined)
+            .finally(() => setDone(true));
+    }, [integration.id]);
+
+    return (
+        <section className="rounded-xl border border-border bg-card p-5">
+            <div className="grid gap-6 sm:grid-cols-2">
+                <div>
+                    {profile?.cover ? (
+                        <img
+                            src={profile.cover}
+                            alt={`${integration.page_name ?? 'Page'} cover`}
+                            className="w-full rounded-lg border border-border object-cover"
+                        />
+                    ) : (
+                        <div className="grid h-36 w-full place-items-center rounded-lg border border-border bg-muted text-sm text-muted-foreground">
+                            {done ? 'No cover photo' : 'Loading…'}
+                        </div>
+                    )}
+                </div>
+
+                <div>
+                    <div className="flex items-start gap-3">
+                        {profile?.picture && (
+                            <img src={profile.picture} alt="" className="size-11 shrink-0 rounded-full border border-border object-cover" />
+                        )}
+                        <div className="min-w-0">
+                            <p className="font-display text-lg font-bold">{integration.page_name}</p>
+                            {(profile?.about ?? integration.page_description) && (
+                                <p className="mt-1 text-sm text-muted-foreground">
+                                    {profile?.about ?? integration.page_description}
+                                </p>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="mt-5 rounded-lg border border-border p-4">
+                        <p className="eyebrow">Connected form</p>
+                        <p className="mt-1.5 font-medium">{integration.form_name}</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    );
+}
+
+function YesNo({ on }: { on: boolean }) {
+    return <Pill tone={on ? 'good' : 'bad'}>{on ? 'YES' : 'NO'}</Pill>;
+}
+
 function SettingsSummary({ integration, onEdit }: { integration: Integration; onEdit: () => void }) {
+    const chips = (items: Named[], colour = false) =>
+        items.length > 0 ? (
+            <span className="flex flex-wrap gap-1.5">
+                {items.map((i) => (
+                    <span
+                        key={i.id}
+                        className={`rounded-md px-2 py-0.5 text-xs font-semibold ${colour ? '' : 'bg-accent text-accent-foreground'}`}
+                        style={colour ? { background: `color-mix(in srgb, ${i.color} 14%, transparent)`, color: i.color } : undefined}
+                    >
+                        {i.emoji} {i.name}
+                    </span>
+                ))}
+            </span>
+        ) : (
+            '—'
+        );
+
+    /*
+     | Two columns, read left to right in pairs. Source and Source Type sit
+     | together because they answer the same question at different grain.
+     */
     const rows: Array<[string, React.ReactNode]> = [
-        ['Source type', integration.source_type ?? '—'],
         ['Source', integration.source ?? '—'],
-        ['Lead stage', integration.lead_stage ? `${integration.lead_stage.emoji ?? ''} ${integration.lead_stage.name}` : '—'],
-        ['Lead group', integration.lead_group?.name ?? '—'],
-        [
-            'Assignee users',
-            integration.members.length > 0 ? (
-                <span className="flex flex-wrap justify-end gap-1.5">
-                    {integration.members.map((m) => (
-                        <span key={m.id} className="rounded-full bg-accent px-2.5 py-0.5 text-xs font-semibold text-accent-foreground">
-                            {m.name}
-                        </span>
-                    ))}
-                </span>
-            ) : (
-                '—'
-            ),
-        ],
-        [
-            'Labels',
-            integration.tags.length > 0 ? (
-                <span className="flex flex-wrap justify-end gap-1.5">
-                    {integration.tags.map((t) => (
-                        <span
-                            key={t.id}
-                            className="rounded-md px-2 py-0.5 text-xs font-semibold"
-                            style={{ background: `color-mix(in srgb, ${t.color} 14%, transparent)`, color: t.color }}
-                        >
-                            {t.emoji} {t.name}
-                        </span>
-                    ))}
-                </span>
-            ) : (
-                '—'
-            ),
-        ],
-        [
-            'On new lead',
-            integration.todo_enabled
-                ? `Create "${integration.todo_title}" (${integration.todo_type}), due in ${integration.todo_due_value} ${integration.todo_due_unit}`
-                : integration.new_lead_enabled
-                  ? 'Enabled, no to-do rule'
-                  : '—',
-        ],
-        ['Notify me', integration.notify_enabled ? 'Yes' : 'No'],
+        ['Source Type', integration.source_type ?? '—'],
+        ['Assigned Users', chips(integration.members)],
+        ['Lead Stage', integration.lead_stage ? `${integration.lead_stage.emoji ?? ''} ${integration.lead_stage.name}` : '—'],
+        ['Lead Group', integration.lead_group?.name ?? '—'],
+        ['Created At', integration.created_at?.slice(0, 10) ?? '—'],
+        ['Create to do on new lead', <YesNo key="n" on={integration.todo_enabled} />],
+        ['Create to do on existing lead', <YesNo key="e" on={integration.existing_todo_enabled} />],
+        ['Labels', chips(integration.tags, true)],
     ];
 
     return (
         <section className="mt-5 overflow-hidden rounded-xl border border-border bg-card">
             <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-4">
-                <h2 className="font-display text-lg font-bold">Integration settings</h2>
+                <h2 className="font-display text-lg font-bold">Integration Settings</h2>
                 <Button onClick={onEdit}>Edit</Button>
             </div>
-            <dl className="divide-y divide-border">
-                {rows.map(([label, value]) => (
-                    <div key={label} className="flex flex-wrap items-start justify-between gap-3 px-5 py-3.5 text-sm">
-                        <dt className="text-muted-foreground">{label}</dt>
-                        <dd className="max-w-[65%] text-right font-medium">{value}</dd>
+
+            <dl className="grid sm:grid-cols-2">
+                {rows.map(([label, value], i) => (
+                    <div
+                        key={label}
+                        className={`flex items-start gap-4 border-b border-border/60 px-5 py-3.5 text-sm ${
+                            i % 2 === 0 ? 'sm:border-r' : ''
+                        }`}
+                    >
+                        <dt className="w-44 shrink-0 text-muted-foreground">{label}</dt>
+                        <dd className="min-w-0 font-medium">{value}</dd>
                     </div>
                 ))}
             </dl>
@@ -263,6 +340,17 @@ function SettingsForm({
         todo_due_value: integration.todo_due_value ?? ('' as number | ''),
         todo_due_unit: integration.todo_due_unit ?? 'minutes',
         notify_enabled: integration.notify_enabled,
+        notify_value: integration.notify_value ?? ('' as number | ''),
+        notify_unit: integration.notify_unit ?? 'minutes',
+        existing_lead_enabled: integration.existing_lead_enabled,
+        existing_todo_enabled: integration.existing_todo_enabled,
+        existing_todo_type: integration.existing_todo_type ?? '',
+        existing_todo_title: integration.existing_todo_title ?? '',
+        existing_todo_due_value: integration.existing_todo_due_value ?? ('' as number | ''),
+        existing_todo_due_unit: integration.existing_todo_due_unit ?? 'minutes',
+        existing_notify_enabled: integration.existing_notify_enabled,
+        existing_notify_value: integration.existing_notify_value ?? ('' as number | ''),
+        existing_notify_unit: integration.existing_notify_unit ?? 'minutes',
     });
 
     const submit = (e: FormEvent) => {
@@ -371,76 +459,30 @@ function SettingsForm({
                 </div>
             </section>
 
-            {/* New lead */}
-            <section className="rounded-xl border border-border bg-card p-5">
-                <label className="flex items-center gap-2.5">
-                    <input type="checkbox" className="size-4 accent-primary"
-                        checked={form.data.new_lead_enabled}
-                        onChange={(e) => form.setData('new_lead_enabled', e.target.checked)} />
-                    <span>
-                        <span className="block font-display font-bold">New lead</span>
-                        <span className="block text-sm text-muted-foreground">What should happen when a new lead comes in</span>
-                    </span>
-                </label>
+            {/*
+                New and existing leads carry the same rule shape but usually want
+                different handling — a first call versus a follow-up — so both
+                render from one component rather than two copies that drift.
+            */}
+            <LeadRuleBlock
+                form={form}
+                options={options}
+                prefix=""
+                title="New lead"
+                subtitle="What should happen when a new lead comes to you"
+                typeHint="The task type assigned to new leads, e.g. FIRST CALL."
+                titleHint="Added to the note when a new lead comes in."
+            />
 
-                {form.data.new_lead_enabled && (
-                    <div className="mt-5 space-y-4 border-t border-border pt-5">
-                        <label className="flex items-center gap-2.5 text-sm font-semibold">
-                            <input type="checkbox" className="size-4 accent-primary"
-                                checked={form.data.todo_enabled}
-                                onChange={(e) => form.setData('todo_enabled', e.target.checked)} />
-                            Create a to-do for the assignee
-                        </label>
-
-                        {form.data.todo_enabled && (
-                            <div className="space-y-4 pl-6">
-                                <Field label="Type" required error={form.errors.todo_type}
-                                    hint="The task type assigned on a new lead, e.g. FIRST CALL.">
-                                    <select className={inputClass} value={form.data.todo_type}
-                                        onChange={(e) => form.setData('todo_type', e.target.value)}>
-                                        <option value="">Select type</option>
-                                        {options.todoTypes.map((t) => <option key={t} value={t}>{t}</option>)}
-                                    </select>
-                                </Field>
-
-                                <Field label="Title" required error={form.errors.todo_title}
-                                    hint="Added to the note when the lead arrives.">
-                                    <input className={inputClass} placeholder="Enter title" value={form.data.todo_title}
-                                        onChange={(e) => form.setData('todo_title', e.target.value)} />
-                                </Field>
-
-                                <Field label="Due in" required error={form.errors.todo_due_value ?? form.errors.todo_due_unit}
-                                    hint="How long after the lead arrives the task is due.">
-                                    <div className="flex gap-2">
-                                        <input type="number" min={1} className={inputClass} placeholder="30"
-                                            value={form.data.todo_due_value}
-                                            onChange={(e) => form.setData('todo_due_value', Number(e.target.value) || '')} />
-                                        <div className="flex overflow-hidden rounded-lg border border-border">
-                                            {(['seconds', 'minutes', 'hours', 'days'] as const).map((u) => (
-                                                <button key={u} type="button" onClick={() => form.setData('todo_due_unit', u)}
-                                                    className={`px-3 py-2 text-sm font-medium transition ${
-                                                        form.data.todo_due_unit === u
-                                                            ? 'bg-primary text-primary-foreground'
-                                                            : 'hover:bg-muted'
-                                                    }`}>
-                                                    {u}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-                                </Field>
-                            </div>
-                        )}
-
-                        <label className="flex items-center gap-2.5 text-sm font-semibold">
-                            <input type="checkbox" className="size-4 accent-primary"
-                                checked={form.data.notify_enabled}
-                                onChange={(e) => form.setData('notify_enabled', e.target.checked)} />
-                            Notify me when a new lead arrives
-                        </label>
-                    </div>
-                )}
-            </section>
+            <LeadRuleBlock
+                form={form}
+                options={options}
+                prefix="existing_"
+                title="Existing Lead"
+                subtitle="What should happen when an existing lead comes to you"
+                typeHint="The task type assigned to existing leads, e.g. FOLLOW-UP CALL."
+                titleHint="Added to the note when an existing lead comes back."
+            />
 
             <div className="flex justify-end gap-3">
                 <Button type="button" variant="ghost" onClick={onCancel}>Cancel</Button>
@@ -449,6 +491,184 @@ function SettingsForm({
                 </Button>
             </div>
         </form>
+    );
+}
+
+const UNITS = ['seconds', 'minutes', 'hours', 'days'] as const;
+
+/** Number box plus a unit segmented control, as used for both due dates and notification delays. */
+function DurationInput({
+    value,
+    unit,
+    onValue,
+    onUnit,
+    placeholder,
+}: {
+    value: number | '';
+    unit: string;
+    onValue: (v: number | '') => void;
+    onUnit: (u: string) => void;
+    placeholder: string;
+}) {
+    return (
+        <div className="flex gap-2">
+            <input
+                type="number"
+                min={0}
+                className={inputClass}
+                placeholder={placeholder}
+                value={value}
+                onChange={(e) => onValue(e.target.value === '' ? '' : Number(e.target.value))}
+            />
+            <div className="flex shrink-0 overflow-hidden rounded-lg border border-border">
+                {UNITS.map((u) => (
+                    <button
+                        key={u}
+                        type="button"
+                        onClick={() => onUnit(u)}
+                        className={`px-3 py-2 text-sm font-medium transition ${
+                            unit === u ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'
+                        }`}
+                    >
+                        {u}
+                    </button>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+/**
+ * One lead-arrival rule: whether to act at all, an optional to-do, and an
+ * optional notification. Driven by a field-name prefix so the New Lead and
+ * Existing Lead blocks stay identical in behaviour.
+ */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+function LeadRuleBlock({
+    form,
+    options,
+    prefix,
+    title,
+    subtitle,
+    typeHint,
+    titleHint,
+}: {
+    form: any;
+    options: Options;
+    prefix: '' | 'existing_';
+    title: string;
+    subtitle: string;
+    typeHint: string;
+    titleHint: string;
+}) {
+    const k = (name: string) => (prefix === '' && name === 'lead_enabled' ? 'new_lead_enabled' : `${prefix}${name}`);
+    const d = (name: string) => form.data[k(name)];
+    const set = (name: string, value: unknown) => form.setData(k(name), value);
+    const err = (name: string) => form.errors[k(name)];
+
+    return (
+        <section className="rounded-xl border border-border bg-card p-5">
+            <label className="flex items-center gap-2.5">
+                <input
+                    type="checkbox"
+                    className="size-4 accent-primary"
+                    checked={d('lead_enabled')}
+                    onChange={(e) => set('lead_enabled', e.target.checked)}
+                />
+                <span>
+                    <span className="block font-display font-bold">{title}</span>
+                    <span className="block text-sm text-muted-foreground">{subtitle}</span>
+                </span>
+            </label>
+
+            {d('lead_enabled') && (
+                <div className="mt-5 space-y-5 border-t border-border pt-5">
+                    <div>
+                        <label className="flex items-center gap-2.5 text-sm font-semibold">
+                            <input
+                                type="checkbox"
+                                className="size-4 accent-primary"
+                                checked={d('todo_enabled')}
+                                onChange={(e) => set('todo_enabled', e.target.checked)}
+                            />
+                            Create a to-do for the assignee
+                        </label>
+
+                        {d('todo_enabled') && (
+                            <div className="mt-4 space-y-4 pl-6">
+                                <Field label="Type" required error={err('todo_type')} hint={typeHint}>
+                                    <select
+                                        className={inputClass}
+                                        value={d('todo_type')}
+                                        onChange={(e) => set('todo_type', e.target.value)}
+                                    >
+                                        <option value="">Select type</option>
+                                        {options.todoTypes.map((t) => (
+                                            <option key={t} value={t}>{t}</option>
+                                        ))}
+                                    </select>
+                                </Field>
+
+                                <Field label="Title" required error={err('todo_title')} hint={titleHint}>
+                                    <input
+                                        className={inputClass}
+                                        placeholder="Enter title"
+                                        value={d('todo_title')}
+                                        onChange={(e) => set('todo_title', e.target.value)}
+                                    />
+                                </Field>
+
+                                <Field
+                                    label="Due date"
+                                    required
+                                    error={err('todo_due_value') ?? err('todo_due_unit')}
+                                    hint="How long after the lead arrives the task is due."
+                                >
+                                    <DurationInput
+                                        value={d('todo_due_value')}
+                                        unit={d('todo_due_unit')}
+                                        onValue={(v) => set('todo_due_value', v)}
+                                        onUnit={(u) => set('todo_due_unit', u)}
+                                        placeholder="30"
+                                    />
+                                </Field>
+                            </div>
+                        )}
+                    </div>
+
+                    <div>
+                        <label className="flex items-center gap-2.5 text-sm font-semibold">
+                            <input
+                                type="checkbox"
+                                className="size-4 accent-primary"
+                                checked={d('notify_enabled')}
+                                onChange={(e) => set('notify_enabled', e.target.checked)}
+                            />
+                            Notify me
+                        </label>
+
+                        {d('notify_enabled') && (
+                            <div className="mt-4 pl-6">
+                                <Field
+                                    label="Notification time"
+                                    required
+                                    error={err('notify_value') ?? err('notify_unit')}
+                                    hint="How long after the lead arrives to send the notification. Zero means straight away."
+                                >
+                                    <DurationInput
+                                        value={d('notify_value')}
+                                        unit={d('notify_unit')}
+                                        onValue={(v) => set('notify_value', v)}
+                                        onUnit={(u) => set('notify_unit', u)}
+                                        placeholder="0"
+                                    />
+                                </Field>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+        </section>
     );
 }
 

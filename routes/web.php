@@ -112,6 +112,7 @@ Route::middleware('auth')->group(function () {
         Route::get('integrations/facebook/pages', [IntegrationController::class, 'facebookPages'])->name('fb.pages');
         Route::get('integrations/facebook/pages/{pageId}/forms', [IntegrationController::class, 'facebookForms'])->name('fb.forms');
         Route::post('integrations', [IntegrationController::class, 'store'])->name('integrations.store');
+        Route::get('integrations/{integration}/preview', [IntegrationController::class, 'preview'])->name('integrations.preview');
         Route::get('integrations/{integration}', [IntegrationController::class, 'show'])->name('integrations.show');
         Route::patch('integrations/{integration}/settings', [IntegrationController::class, 'updateSettings'])->name('integrations.settings');
         Route::post('integrations/{integration}/sync', [IntegrationController::class, 'sync'])->name('integrations.sync');

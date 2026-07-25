@@ -13,7 +13,7 @@ class OtpServiceProvider extends ServiceProvider
     {
         $this->app->bind(OtpSender::class, function () {
             return match (config('otp.driver')) {
-                'log' => new LogOtpSender(),
+                'log' => new LogOtpSender,
                 // 'msg91' => new Msg91OtpSender(config('otp.gateways.msg91')),
                 default => throw new InvalidArgumentException(
                     'Unknown OTP driver ['.config('otp.driver').']'

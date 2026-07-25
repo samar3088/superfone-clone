@@ -75,6 +75,21 @@ class IntegrationController extends Controller
             ->with('success', 'Integration created. Set how its leads should be handled below.');
     }
 
+    /** Page cover, avatar and blurb for the eye-icon preview. */
+    public function preview(Integration $integration): JsonResponse
+    {
+        $this->guard();
+
+        return response()->json([
+            'name' => $integration->name,
+            'form_name' => $integration->form_name,
+            'page_name' => $integration->page_name,
+            'profile' => $integration->external_page_id
+                ? $this->facebook->pageProfile($integration->external_page_id)
+                : null,
+        ]);
+    }
+
     /** Configuration + Logs for one integration. */
     public function show(Integration $integration): Response
     {

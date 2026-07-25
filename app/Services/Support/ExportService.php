@@ -19,9 +19,9 @@ class ExportService
     private const CHUNK_SIZE = 1000;
 
     /**
-     * @param  Builder  $query      the (already filtered) query to export
+     * @param  Builder  $query  the (already filtered) query to export
      * @param  array<int, string>  $headings  CSV header row
-     * @param  Closure  $mapRow     receives a model, returns a flat array of cells
+     * @param  Closure  $mapRow  receives a model, returns a flat array of cells
      */
     public function streamCsv(
         Builder $query,

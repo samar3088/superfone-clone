@@ -81,12 +81,17 @@ export function Modal({
     title,
     description,
     children,
+    wide = false,
+    /** Keep the title as the accessible name but drop the visible heading. */
+    hideHeader = false,
 }: {
     open: boolean;
     onClose: () => void;
     title: string;
     description?: string;
     children: ReactNode;
+    wide?: boolean;
+    hideHeader?: boolean;
 }) {
     useEffect(() => {
         if (!open) return;
@@ -114,12 +119,27 @@ export function Modal({
                 aria-modal="true"
                 aria-label={title}
                 onClick={(e) => e.stopPropagation()}
-                className="max-h-[88vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-border bg-card p-6 shadow-2xl"
+                className={`relative max-h-[88vh] w-full overflow-y-auto rounded-2xl border border-border bg-card p-6 shadow-2xl ${
+                    wide ? 'max-w-3xl' : 'max-w-lg'
+                }`}
             >
-                <div className="mb-5">
-                    <h2 className="font-display text-xl font-bold">{title}</h2>
-                    {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
-                </div>
+                <button
+                    type="button"
+                    onClick={onClose}
+                    aria-label="Close"
+                    className="absolute right-4 top-4 grid size-8 place-items-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                >
+                    <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden>
+                        <path d="M18 6 6 18M6 6l12 12" strokeLinecap="round" />
+                    </svg>
+                </button>
+
+                {!hideHeader && (
+                    <div className="mb-5 pr-10">
+                        <h2 className="font-display text-xl font-bold">{title}</h2>
+                        {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
+                    </div>
+                )}
                 {children}
             </div>
         </div>

@@ -5,7 +5,6 @@ namespace App\Services\Insights;
 use App\Models\Call;
 use App\Models\Customer;
 use App\Models\User;
-use App\Support\Roles;
 use Illuminate\Contracts\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 

@@ -45,7 +45,13 @@ class FacebookLeadSource
     /** @return array<string, mixed> */
     private function get(string $path, array $query): array
     {
-        $response = Http::timeout(20)->retry(2, 300)->get($this->base().$path, $query);
+        /*
+         | throw: false matters. By default retry() raises its own
+         | RequestException once attempts run out, which would sail straight
+         | past every `catch (RuntimeException)` in this class — so a dead token
+         | would 500 the page instead of rendering as "not connected".
+         */
+        $response = Http::timeout(20)->retry(2, 300, throw: false)->get($this->base().$path, $query);
 
         if ($response->failed()) {
             $error = $response->json('error.message') ?? $response->body();
@@ -98,6 +104,38 @@ class FacebookLeadSource
     public function page(string $pageId): ?array
     {
         return collect($this->pages())->firstWhere('id', $pageId);
+    }
+
+    /**
+     * Cover photo and blurb for the page preview.
+     *
+     * Fetched on demand and cached briefly rather than stored: Facebook's cover
+     * urls are signed and expire within days, so a copy in our database would
+     * turn into a broken image. The avatar is the stable /picture endpoint and
+     * keeps working regardless.
+     *
+     * @return array{name: string, picture: string, cover: ?string, about: ?string}|null
+     */
+    public function pageProfile(string $pageId): ?array
+    {
+        return Cache::remember("fb.page.profile.{$pageId}", 1800, function () use ($pageId) {
+            try {
+                $data = $this->get("/{$pageId}", [
+                    'access_token' => $this->pageToken($pageId),
+                    'fields' => 'id,name,about,description,cover{source}',
+                ]);
+            } catch (RuntimeException) {
+                // A preview is decorative — a dead token should not 500 the page.
+                return null;
+            }
+
+            return [
+                'name' => $data['name'] ?? '',
+                'picture' => $this->base().'/'.$pageId.'/picture?type=large',
+                'cover' => $data['cover']['source'] ?? null,
+                'about' => $data['about'] ?? $data['description'] ?? null,
+            ];
+        });
     }
 
     private function pageToken(string $pageId): string
@@ -179,7 +217,9 @@ class FacebookLeadSource
         $rows = 0;
 
         while ($url && $pages < $maxPages) {
-            $request = Http::timeout(30)->retry(2, 500);
+            // throw: false so the failure check below reports the Graph error
+            // message, rather than retry() raising a bare RequestException.
+            $request = Http::timeout(30)->retry(2, 500, throw: false);
 
             /*
              | Only the first call builds its own query. Follow-up pages are

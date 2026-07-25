@@ -18,7 +18,11 @@ class Integration extends Model
         'page_description', 'external_form_id', 'form_name', 'connected_account',
         'source_type', 'source', 'lead_stage_id', 'lead_group_id',
         'new_lead_enabled', 'todo_enabled', 'todo_type', 'todo_title',
-        'todo_due_value', 'todo_due_unit', 'notify_enabled',
+        'todo_due_value', 'todo_due_unit',
+        'notify_enabled', 'notify_value', 'notify_unit',
+        'existing_lead_enabled', 'existing_todo_enabled', 'existing_todo_type',
+        'existing_todo_title', 'existing_todo_due_value', 'existing_todo_due_unit',
+        'existing_notify_enabled', 'existing_notify_value', 'existing_notify_unit',
         'status', 'last_synced_at', 'created_by',
     ];
 
@@ -29,6 +33,9 @@ class Integration extends Model
             'new_lead_enabled' => 'boolean',
             'todo_enabled' => 'boolean',
             'notify_enabled' => 'boolean',
+            'existing_lead_enabled' => 'boolean',
+            'existing_todo_enabled' => 'boolean',
+            'existing_notify_enabled' => 'boolean',
         ];
     }
 
@@ -75,10 +82,24 @@ class Integration extends Model
      */
     public function isConfigured(): bool
     {
-        return filled($this->source_type)
-            && filled($this->source)
-            && $this->lead_stage_id !== null
-            && $this->members()->exists();
+        return ! $this->needsSettings() && ! $this->needsMapping();
+    }
+
+    /**
+     * The routing rules are incomplete — an arriving lead would have no source
+     * to record and no stage to sit in.
+     */
+    public function needsSettings(): bool
+    {
+        return blank($this->source_type)
+            || blank($this->source)
+            || $this->lead_stage_id === null;
+    }
+
+    /** Nobody is mapped to this campaign, so its leads would land unassigned. */
+    public function needsMapping(): bool
+    {
+        return ! $this->members()->exists();
     }
 
     public function getActivitylogOptions(): LogOptions

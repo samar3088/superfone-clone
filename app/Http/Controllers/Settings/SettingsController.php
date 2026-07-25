@@ -41,6 +41,10 @@ class SettingsController extends Controller
                 ->map(fn (Integration $i) => [
                     ...$i->toArray(),
                     'is_configured' => $i->isConfigured(),
+                    'needs_settings' => $i->needsSettings(),
+                    'needs_mapping' => $i->needsMapping(),
+                    'created_ago' => $i->created_at->diffForHumans(),
+                    'company' => config('company.legal_name'),
                 ]),
             'providers' => LeadProviders::all(),
             'providerTabs' => LeadProviders::tabs(),
