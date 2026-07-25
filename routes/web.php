@@ -101,11 +101,12 @@ Route::middleware('auth')->group(function () {
 
         Route::put('field-priority', [CrmSettingsController::class, 'saveFieldPriority'])->name('priority.save');
 
-        // Integrations → Facebook
+        // Integrations → Facebook. Static segments sit above {integration}.
         Route::get('integrations/facebook/pages', [IntegrationController::class, 'facebookPages'])->name('fb.pages');
         Route::get('integrations/facebook/pages/{pageId}/forms', [IntegrationController::class, 'facebookForms'])->name('fb.forms');
         Route::post('integrations', [IntegrationController::class, 'store'])->name('integrations.store');
-        Route::patch('integrations/{integration}', [IntegrationController::class, 'update'])->name('integrations.update');
+        Route::get('integrations/{integration}', [IntegrationController::class, 'show'])->name('integrations.show');
+        Route::patch('integrations/{integration}/settings', [IntegrationController::class, 'updateSettings'])->name('integrations.settings');
         Route::patch('integrations/{integration}/toggle', [IntegrationController::class, 'toggle'])->name('integrations.toggle');
         Route::delete('integrations/{integration}', [IntegrationController::class, 'destroy'])->name('integrations.destroy');
     });

@@ -35,10 +35,14 @@ class LeadService
                 'name' => $payload['name'],
                 'mobile' => $payload['mobile'],
                 'email' => $payload['email'] ?? null,
-                'source' => $integration->provider,
+                // The integration's own Source settings describe the campaign.
+                'source' => $integration->source ?: $integration->provider,
                 'campaign' => $integration->form_name ?? $integration->name,
                 'integration_id' => $integration->id,
-                'lead_stage_id' => $this->initialStageId(),
+                // Assignment rules configured on the integration win; the
+                // global INITIAL stage is only a fallback.
+                'lead_stage_id' => $integration->lead_stage_id ?? $this->initialStageId(),
+                'lead_group_id' => $integration->lead_group_id,
                 'assigned_to' => $this->nextAssignee($integration),
                 'custom_data' => $payload['custom_data'] ?? null,
             ]);

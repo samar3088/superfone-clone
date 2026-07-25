@@ -1,4 +1,4 @@
-import { Head, router, useForm } from '@inertiajs/react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
 import { FormEvent, useState } from 'react';
 
 import { Button, Field, Modal, Pill, inputClass } from '@/components/ui-kit';
@@ -12,8 +12,11 @@ interface Priority { id: number; section: string; field_key: string; label: stri
 interface Member { id: number; name: string }
 interface Integration {
     id: number; name: string; provider: string; page_name: string | null; form_name: string | null;
-    connected_account: string | null; status: string; created_at: string;
+    connected_account: string | null; status: string; created_at: string; is_configured: boolean;
     members: Member[]; creator: { id: number; name: string } | null;
+}
+interface Provider {
+    key: string; label: string; badge: string; color: string; available: boolean;
 }
 
 interface Props {
@@ -23,6 +26,8 @@ interface Props {
     customFields: CustomFieldRow[];
     fieldPriorities: Record<string, Priority[]>;
     integrations: Integration[];
+    providers: Provider[];
+    providerTabs: string[];
     members: Member[];
     stageTypes: string[];
     fieldTypes: string[];
@@ -67,7 +72,13 @@ export default function SettingsIndex(props: Props) {
 
             {tab === 'business' && <TagsTab tags={props.tags} />}
             {tab === 'crm' && <CrmTab {...props} />}
-            {tab === 'integrations' && <IntegrationsTab integrations={props.integrations} members={props.members} />}
+            {tab === 'integrations' && (
+                <IntegrationsTab
+                    integrations={props.integrations}
+                    providers={props.providers}
+                    providerTabs={props.providerTabs}
+                />
+            )}
         </ConsoleLayout>
     );
 }
@@ -554,26 +565,79 @@ function PriorityPanel({ priorities }: { priorities: Record<string, Priority[]> 
 
 /* ── Integrations ───────────────────────────────────── */
 
-function IntegrationsTab({ integrations, members }: { integrations: Integration[]; members: Member[] }) {
-    const [creating, setCreating] = useState(false);
-    const [editing, setEditing] = useState<Integration | null>(null);
+function ProviderBadge({ provider, providers, size = 'size-9 text-sm' }: { provider: string; providers: Provider[]; size?: string }) {
+    const p = providers.find((x) => x.key === provider);
+
+    return (
+        <span
+            className={`grid ${size} flex-shrink-0 place-items-center rounded-full font-bold text-white`}
+            style={{ background: p?.color ?? '#9ca3af' }}
+            aria-hidden
+        >
+            {p?.badge ?? '?'}
+        </span>
+    );
+}
+
+function IntegrationsTab({
+    integrations,
+    providers,
+    providerTabs,
+}: {
+    integrations: Integration[];
+    providers: Provider[];
+    providerTabs: string[];
+}) {
+    const [filter, setFilter] = useState('');
+    const [wizard, setWizard] = useState(false);
+
+    const visible = filter ? integrations.filter((i) => i.provider === filter) : integrations;
+    const tabs = [{ key: '', label: 'All' }, ...providerTabs.map((k) => providers.find((p) => p.key === k)!)
+        .filter(Boolean)
+        .map((p) => ({ key: p.key, label: p.label }))];
 
     return (
         <>
-            <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
-                <p className="max-w-2xl text-sm text-muted-foreground">
-                    Connect a Facebook lead form and map it to the team members who should work those leads.
-                    New enquiries are shared between them in turn.
-                </p>
-                <Button onClick={() => setCreating(true)}>＋ Create new integration</Button>
+            <div className="rounded-xl border border-border bg-muted/40 p-5">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                        <h2 className="font-display text-xl font-bold">Integrations</h2>
+                        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+                            Connect and sync your leads from different platforms in realtime. Stay organised and never miss a lead.
+                        </p>
+                    </div>
+                    <Button onClick={() => setWizard(true)}>Create new Integration</Button>
+                </div>
             </div>
 
-            <div className="space-y-4">
-                {integrations.map((it) => (
-                    <div key={it.id} className="rounded-xl border border-border bg-card p-5">
+            {/* Provider filter tabs */}
+            <div className="mt-4 flex flex-wrap gap-1 border-b border-border">
+                {tabs.map((t) => (
+                    <button
+                        key={t.key || 'all'}
+                        onClick={() => setFilter(t.key)}
+                        className={`-mb-px flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-semibold transition ${
+                            filter === t.key
+                                ? 'border-primary text-primary'
+                                : 'border-transparent text-muted-foreground hover:text-foreground'
+                        }`}
+                    >
+                        {t.key && <ProviderBadge provider={t.key} providers={providers} size="size-5 text-[10px]" />}
+                        {t.label}
+                    </button>
+                ))}
+            </div>
+
+            <div className="mt-4 space-y-4">
+                {visible.map((it) => (
+                    <Link
+                        key={it.id}
+                        href={`/settings/integrations/${it.id}`}
+                        className="block rounded-xl border border-border bg-card p-5 transition hover:border-primary/40"
+                    >
                         <div className="flex flex-wrap items-start justify-between gap-3">
                             <div className="flex items-center gap-3">
-                                <span className="grid size-10 place-items-center rounded-lg bg-[#1877f2] font-bold text-white">f</span>
+                                <ProviderBadge provider={it.provider} providers={providers} size="size-10 text-base" />
                                 <div>
                                     <p className="font-display text-base font-bold">{it.name}</p>
                                     <p className="text-xs text-muted-foreground">
@@ -581,185 +645,260 @@ function IntegrationsTab({ integrations, members }: { integrations: Integration[
                                     </p>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                                <Pill tone={it.status === 'active' ? 'good' : 'neutral'}>{it.status}</Pill>
-                                <Button variant="ghost" className="px-2.5 py-1.5" onClick={() => setEditing(it)}>Edit</Button>
-                                <Button variant="ghost" className="px-2.5 py-1.5"
-                                    onClick={() => router.patch(`/settings/integrations/${it.id}/toggle`, {}, { preserveScroll: true })}>
-                                    {it.status === 'active' ? 'Pause' : 'Resume'}
-                                </Button>
-                            </div>
-                        </div>
-
-                        <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-muted-foreground">
-                            <span>Page: <b className="text-foreground">{it.page_name}</b></span>
-                            <span>Form: <b className="text-foreground">{it.form_name}</b></span>
-                            <span>Account: <b className="text-foreground">{it.connected_account}</b></span>
+                            <Pill tone={it.status === 'active' ? 'good' : 'neutral'}>{it.status.toUpperCase()}</Pill>
                         </div>
 
                         <div className="mt-3 flex flex-wrap items-center gap-2">
-                            <span className="eyebrow">Leads go to</span>
-                            {it.members.map((m) => (
-                                <span key={m.id} className="rounded-full bg-accent px-2.5 py-1 text-xs font-semibold text-accent-foreground">
-                                    {m.name}
+                            <Pill tone={it.is_configured ? 'good' : 'warn'}>
+                                {it.is_configured ? '✓ Complete' : 'Needs setup'}
+                            </Pill>
+                            {it.page_name && (
+                                <span className="text-sm text-muted-foreground">
+                                    Page: <b className="text-foreground">{it.page_name}</b>
                                 </span>
-                            ))}
-                            {it.members.length === 0 && (
-                                <span className="text-sm" style={{ color: 'var(--warn)' }}>
-                                    No members mapped — leads will arrive unassigned
+                            )}
+                            {it.form_name && (
+                                <span className="text-sm text-muted-foreground">
+                                    Form: <b className="text-foreground">{it.form_name}</b>
                                 </span>
                             )}
                         </div>
-                    </div>
+
+                        {it.connected_account && (
+                            <p className="mt-2 flex items-center gap-2 text-sm font-medium text-primary">
+                                <ProviderBadge provider={it.provider} providers={providers} size="size-4 text-[9px]" />
+                                {it.connected_account}
+                            </p>
+                        )}
+                    </Link>
                 ))}
 
-                {integrations.length === 0 && (
+                {visible.length === 0 && (
                     <div className="rounded-xl border border-dashed border-border py-16 text-center">
-                        <p className="font-display text-base font-semibold">No integrations yet</p>
+                        <p className="font-display text-base font-semibold">No integrations here yet</p>
                         <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
-                            Connect a Facebook lead form so campaign enquiries flow straight into your leads list.
+                            Connect a lead form so campaign enquiries flow straight into your leads list.
                         </p>
                     </div>
                 )}
             </div>
 
-            {(creating || editing) && (
-                <IntegrationWizard integration={editing ?? undefined} members={members}
-                    onClose={() => { setCreating(false); setEditing(null); }} />
-            )}
+            {wizard && <CreateIntegrationWizard providers={providers} onClose={() => setWizard(false)} />}
         </>
     );
 }
 
-function IntegrationWizard({ integration, members, onClose }: { integration?: Integration; members: Member[]; onClose: () => void }) {
-    const isEdit = !!integration;
-    const [step, setStep] = useState(isEdit ? 3 : 1);
-    const [pages, setPages] = useState<Array<{ id: string; name: string }>>([]);
-    const [forms, setForms] = useState<Array<{ id: string; name: string }>>([]);
+/**
+ * Create flow: pick a provider, name the integration, then choose the page
+ * and lead form. Routing rules are configured afterwards on the integration.
+ */
+function CreateIntegrationWizard({ providers, onClose }: { providers: Provider[]; onClose: () => void }) {
+    const [provider, setProvider] = useState<Provider | null>(null);
+    const [step, setStep] = useState<1 | 2>(1);
     const [account, setAccount] = useState('');
+    const [pages, setPages] = useState<Array<{ id: string; name: string; description: string | null }>>([]);
+    const [forms, setForms] = useState<Array<{ id: string; name: string }>>([]);
+    const [loadingForms, setLoadingForms] = useState(false);
 
     const form = useForm({
-        name: integration?.name ?? '',
-        provider: 'facebook',
+        name: '',
+        provider: '',
         external_page_id: '',
-        page_name: '',
         external_form_id: '',
         form_name: '',
-        member_ids: integration?.members.map((m) => m.id) ?? ([] as number[]),
     });
 
-    const loadPages = async () => {
+    const choose = async (p: Provider) => {
+        if (! p.available) return;
+        setProvider(p);
+        form.setData('provider', p.key);
+
         const res = await fetch('/settings/integrations/facebook/pages', { headers: { Accept: 'application/json' } });
         const data = await res.json();
         setAccount(data.account.name);
         setPages(data.pages);
-        setStep(2);
     };
 
     const pickPage = async (page: { id: string; name: string }) => {
-        form.setData((d) => ({ ...d, external_page_id: page.id, page_name: page.name }));
-        const res = await fetch(`/settings/integrations/facebook/pages/${page.id}/forms`, { headers: { Accept: 'application/json' } });
+        form.setData('external_page_id', page.id);
+        setForms([]);
+        setLoadingForms(true);
+        const res = await fetch(`/settings/integrations/facebook/pages/${page.id}/forms`, {
+            headers: { Accept: 'application/json' },
+        });
         setForms(await res.json());
+        setLoadingForms(false);
     };
 
-    const pickForm = (f: { id: string; name: string }) => {
-        form.setData((d) => ({ ...d, external_form_id: f.id, form_name: f.name, name: d.name || f.name }));
-        setStep(3);
-    };
-
-    const submit = (e: FormEvent) => {
+    const save = (e: FormEvent) => {
         e.preventDefault();
-        const opts = { preserveScroll: true, onSuccess: onClose };
-        isEdit ? form.patch(`/settings/integrations/${integration!.id}`, opts) : form.post('/settings/integrations', opts);
+        form.post('/settings/integrations');
     };
 
-    const toggleMember = (id: number) =>
-        form.setData('member_ids',
-            form.data.member_ids.includes(id)
-                ? form.data.member_ids.filter((m) => m !== id)
-                : [...form.data.member_ids, id]);
+    /* Provider picker */
+    if (! provider) {
+        return (
+            <Modal open onClose={onClose} title="Create a new integration"
+                description="Pick a provider to start connecting your leads.">
+                <p className="eyebrow mb-3">Select provider</p>
+                <div className="flex flex-wrap gap-2.5">
+                    {providers.map((p) => (
+                        <button
+                            key={p.key}
+                            onClick={() => choose(p)}
+                            disabled={! p.available}
+                            title={p.available ? undefined : 'Coming soon'}
+                            className={`flex items-center gap-2.5 rounded-full border px-4 py-2 text-sm font-semibold transition ${
+                                p.available
+                                    ? 'border-border hover:border-primary hover:bg-accent'
+                                    : 'cursor-not-allowed border-border/60 opacity-40'
+                            }`}
+                        >
+                            <ProviderBadge provider={p.key} providers={providers} size="size-6 text-[11px]" />
+                            {p.label}
+                        </button>
+                    ))}
+                </div>
+                <p className="mt-4 text-xs text-muted-foreground">
+                    Facebook is connected. The remaining providers become available as each one is enabled.
+                </p>
+            </Modal>
+        );
+    }
 
+    /* Facebook wizard */
     return (
-        <Modal open onClose={onClose}
-            title={isEdit ? `Edit ${integration!.name}` : 'Connect a Facebook lead form'}
-            description={isEdit ? 'Change the name or who receives these leads.' : undefined}>
+        <Modal open onClose={onClose} title={provider.label}>
+            <div className="-mt-3 mb-5 flex flex-wrap items-center justify-between gap-3">
+                <button onClick={() => setProvider(null)} className="text-sm font-medium text-muted-foreground hover:text-foreground">
+                    ← Change provider
+                </button>
+                <div className="flex items-center gap-3">
+                    <span className="text-sm font-semibold text-primary">{account || '…'}</span>
+                    <Button
+                        variant="ghost"
+                        className="px-3 py-1.5"
+                        onClick={() => alert('Reconnecting needs the Meta app credentials — on the client checklist.')}
+                    >
+                        Reconnect
+                    </Button>
+                </div>
+            </div>
+
+            {/* Steps */}
+            <div className="mb-6 flex items-center gap-3 text-sm">
+                <span className="grid size-6 place-items-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+                    {step === 2 ? '✓' : '1'}
+                </span>
+                <span className={step === 1 ? 'font-semibold' : 'text-muted-foreground'}>Enter name</span>
+                <span className="h-px w-8 bg-border" />
+                <span className={`grid size-6 place-items-center rounded-full text-xs font-bold ${
+                    step === 2 ? 'bg-primary text-primary-foreground' : 'border border-border text-muted-foreground'
+                }`}>
+                    2
+                </span>
+                <span className={step === 2 ? 'font-semibold' : 'text-muted-foreground'}>Select page and form</span>
+            </div>
 
             {step === 1 && (
                 <div className="space-y-4">
-                    <p className="text-sm text-muted-foreground">
-                        We will read the pages and lead forms on your connected Facebook account.
-                    </p>
-                    <div className="flex justify-end gap-3">
-                        <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
-                        <Button onClick={loadPages}>Continue</Button>
-                    </div>
+                    <Field label="Name" required error={form.errors.name}>
+                        <input
+                            className={inputClass}
+                            autoFocus
+                            placeholder="Enter name for the integration"
+                            value={form.data.name}
+                            onChange={(e) => form.setData('name', e.target.value)}
+                        />
+                    </Field>
+                    <Button
+                        className="w-full py-3"
+                        disabled={form.data.name.trim().length < 2}
+                        onClick={() => setStep(2)}
+                    >
+                        Next
+                    </Button>
                 </div>
             )}
 
             {step === 2 && (
-                <div className="space-y-4">
-                    <p className="text-sm">Connected as <b>{account}</b></p>
+                <form onSubmit={save} className="space-y-5">
                     <div>
-                        <span className="eyebrow">Select page</span>
-                        <div className="mt-2 flex flex-wrap gap-2">
+                        <p className="eyebrow mb-2">Select page</p>
+                        <div className="grid gap-2.5 sm:grid-cols-2">
                             {pages.map((p) => (
-                                <button key={p.id} onClick={() => pickPage(p)}
-                                    className={`rounded-lg border px-3.5 py-2 text-sm font-medium transition ${
-                                        form.data.external_page_id === p.id ? 'border-primary bg-accent text-accent-foreground' : 'border-border hover:bg-muted'
-                                    }`}>
-                                    {p.name}
+                                <button
+                                    key={p.id}
+                                    type="button"
+                                    onClick={() => pickPage(p)}
+                                    className={`rounded-xl border-2 p-3.5 text-left transition ${
+                                        form.data.external_page_id === p.id
+                                            ? 'border-primary bg-accent'
+                                            : 'border-border hover:border-primary/40'
+                                    }`}
+                                >
+                                    <span className="block text-sm font-semibold">{p.name}</span>
                                 </button>
                             ))}
                         </div>
+                        {form.errors.external_page_id && (
+                            <p className="mt-1.5 text-xs font-medium" style={{ color: 'var(--bad)' }}>
+                                {form.errors.external_page_id}
+                            </p>
+                        )}
                     </div>
-                    {forms.length > 0 && (
+
+                    {(forms.length > 0 || loadingForms) && (
                         <div>
-                            <span className="eyebrow">Select form</span>
-                            <div className="mt-2 divide-y divide-border overflow-hidden rounded-lg border border-border">
-                                {forms.map((f) => (
-                                    <div key={f.id} className="flex items-center justify-between gap-3 px-3.5 py-2.5">
-                                        <span className="text-sm font-medium">{f.name}</span>
-                                        <Button className="px-3 py-1.5" onClick={() => pickForm(f)}>Select</Button>
-                                    </div>
-                                ))}
+                            <p className="eyebrow mb-2">Select form</p>
+                            <div className="max-h-64 overflow-y-auto rounded-xl border border-border">
+                                <table className="w-full text-sm">
+                                    <thead className="sticky top-0 bg-muted">
+                                        <tr>
+                                            <th className="px-4 py-2.5 text-left"><span className="eyebrow">Name</span></th>
+                                            <th className="px-4 py-2.5 text-right"><span className="eyebrow">Actions</span></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {loadingForms && (
+                                            <tr><td colSpan={2} className="px-4 py-6 text-center text-muted-foreground">Loading forms…</td></tr>
+                                        )}
+                                        {forms.map((f) => {
+                                            const selected = form.data.external_form_id === f.id;
+                                            return (
+                                                <tr key={f.id} className="border-t border-border/60">
+                                                    <td className="px-4 py-2.5 font-medium">{f.name}</td>
+                                                    <td className="px-4 py-2.5 text-right">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => form.setData((d) => ({
+                                                                ...d, external_form_id: f.id, form_name: f.name,
+                                                            }))}
+                                                            className="rounded-lg px-4 py-1.5 text-sm font-semibold text-white transition"
+                                                            style={{ background: selected ? 'var(--good)' : 'var(--primary)' }}
+                                                        >
+                                                            {selected ? 'Selected' : 'Select'}
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
                             </div>
+                            {form.errors.external_form_id && (
+                                <p className="mt-1.5 text-xs font-medium" style={{ color: 'var(--bad)' }}>
+                                    {form.errors.external_form_id}
+                                </p>
+                            )}
                         </div>
                     )}
-                    <div className="flex justify-end">
+
+                    <div className="flex justify-between gap-3">
                         <Button type="button" variant="ghost" onClick={() => setStep(1)}>Back</Button>
-                    </div>
-                </div>
-            )}
-
-            {step === 3 && (
-                <form onSubmit={submit} className="space-y-4">
-                    {!isEdit && (
-                        <div className="rounded-lg border border-border bg-muted/40 p-3 text-sm">
-                            <b>{form.data.page_name}</b> · {form.data.form_name}
-                        </div>
-                    )}
-
-                    <Field label="Integration name" required error={form.errors.name}>
-                        <input className={inputClass} value={form.data.name}
-                            onChange={(e) => form.setData('name', e.target.value)} />
-                    </Field>
-
-                    <Field label="Assign leads to" required error={form.errors.member_ids}
-                        hint="New leads are shared between the selected members in turn.">
-                        <div className="max-h-52 space-y-1 overflow-y-auto rounded-lg border border-border p-2">
-                            {members.map((m) => (
-                                <label key={m.id} className="flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 text-sm hover:bg-muted">
-                                    <input type="checkbox" className="size-4 accent-primary"
-                                        checked={form.data.member_ids.includes(m.id)} onChange={() => toggleMember(m.id)} />
-                                    {m.name}
-                                </label>
-                            ))}
-                        </div>
-                    </Field>
-
-                    <div className="flex justify-end gap-3">
-                        <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
-                        <Button type="submit" disabled={form.processing}>{isEdit ? 'Save' : 'Connect'}</Button>
+                        <Button type="submit" disabled={! form.data.external_form_id || form.processing}>
+                            {form.processing ? 'Saving…' : 'Save & Next'}
+                        </Button>
                     </div>
                 </form>
             )}

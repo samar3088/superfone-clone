@@ -10,6 +10,7 @@ use App\Models\LeadGroup;
 use App\Models\LeadStage;
 use App\Models\Tag;
 use App\Models\User;
+use App\Support\LeadProviders;
 use App\Support\Permissions;
 use App\Support\Roles;
 use Inertia\Inertia;
@@ -32,7 +33,13 @@ class SettingsController extends Controller
             'customFields' => CustomField::orderBy('sequence')->orderBy('id')->get(),
             'fieldPriorities' => FieldPriority::orderBy('sequence')->get()->groupBy('section'),
             'integrations' => Integration::with(['members:id,name', 'creator:id,name'])
-                ->latest()->get(),
+                ->latest()->get()
+                ->map(fn (Integration $i) => [
+                    ...$i->toArray(),
+                    'is_configured' => $i->isConfigured(),
+                ]),
+            'providers' => LeadProviders::all(),
+            'providerTabs' => LeadProviders::tabs(),
             'members' => User::role(Roles::MEMBER)
                 ->where('is_active', true)
                 ->orderBy('name')
