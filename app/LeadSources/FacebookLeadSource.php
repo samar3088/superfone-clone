@@ -64,14 +64,18 @@ class FacebookLeadSource
         $pages = Cache::remember('fb.pages', config('facebook.page_token_ttl'), function () {
             $data = $this->get('/me/accounts', [
                 'access_token' => $this->userToken(),
-                'fields' => 'id,name,access_token,picture{url}',
+                'fields' => 'id,name,access_token',
                 'limit' => 100,
             ])['data'] ?? [];
 
             return collect($data)->map(fn (array $p) => [
                 'id' => $p['id'],
-                'name' => $p['name'],
-                'picture' => $p['picture']['data']['url'] ?? null,
+                'name' => trim($p['name']),
+                // Deliberately not the CDN url Facebook returns: that is ~540
+                // characters and carries an expiry, so a stored copy would
+                // rot within days. This endpoint is stable and redirects to
+                // whatever the current avatar is.
+                'picture' => $this->base().'/'.$p['id'].'/picture?type=square',
                 'description' => null,
                 'token' => $p['access_token'],
             ])->all();
