@@ -33,38 +33,62 @@ class TaskService
 
     public const TABS = [self::TAB_FRESH, self::TAB_FOLLOWUPS, self::TAB_REMINDERS];
 
+    /** The two task types that decide a tab on their own. */
+    public const TYPE_FIRST_CALL = 'FIRST CALL';
+
+    public const TYPE_REMINDER = 'REMINDER';
+
     /**
      * Narrow to one tab.
      *
-     * The split is *has anyone acted on this lead yet*, not what raised the
-     * work. Two signals say somebody has:
+     * Read in this order, because the order is what makes the three exhaustive
+     * and non-overlapping — every to-do lands on exactly one:
      *
-     *   - the lead has moved. Its version starts at 1 and steps on every stage
-     *     or owner change, so anything above 1 has been handled.
-     *   - a to-do on the lead has been ticked off. That can happen without the
-     *     stage moving at all — a first call made, nothing agreed yet.
+     *   Reminders   a REMINDER, whatever its lead is doing. Someone set it
+     *               deliberately, so it belongs where reminders are read.
+     *   Fresh Leads anything else that is new work: a first call, a lead still
+     *               at its opening stage, or a lead nobody has touched.
+     *   Follow Ups  everything left.
      *
-     * Fresh is neither; Follow Ups is either. Between them they cover every
-     * to-do, so nothing can fall down the gap while Reminders is empty.
+     * Note what is *not* used: the trigger that raised the to-do. A campaign
+     * rule change would otherwise move existing work between tabs overnight.
      */
     public function inTab(Builder $query, string $tab): Builder
     {
         return match ($tab) {
+            self::TAB_REMINDERS => $query->where('type', self::TYPE_REMINDER),
+
             self::TAB_FRESH => $query
-                ->whereHas('lead', fn (Builder $l) => $l->where('version', 1))
-                ->whereNotIn('lead_id', $this->leadsWithCompletedWork()),
+                ->where('type', '!=', self::TYPE_REMINDER)
+                ->where(fn (Builder $q) => $this->isNewWork($q)),
 
-            self::TAB_FOLLOWUPS => $query->where(fn (Builder $q) => $q
-                ->whereHas('lead', fn (Builder $l) => $l->where('version', '>', 1))
-                ->orWhereIn('lead_id', $this->leadsWithCompletedWork())),
-
-            /*
-             | Deliberately nothing. The client has not said what a Reminder is
-             | yet, and showing a guess is worse than showing an empty tab that
-             | says so — a guess gets worked, an empty tab gets asked about.
-             */
-            self::TAB_REMINDERS => $query->whereRaw('1 = 0'),
+            self::TAB_FOLLOWUPS => $query
+                ->where('type', '!=', self::TYPE_REMINDER)
+                ->whereNot(fn (Builder $q) => $this->isNewWork($q)),
         };
+    }
+
+    /**
+     * The Fresh Leads condition, in one place so the two tabs that use it
+     * cannot drift into overlapping or leaving a gap.
+     *
+     * Three ways in, any one of them enough:
+     *
+     *   - the to-do is a first call. Nothing is more clearly new work.
+     *   - the lead is still at its opening stage. Keyed on the stage's INITIAL
+     *     type, not the name "New Inquiry" — the client can rename stages in
+     *     Settings, and a rule keyed on a name breaks silently when they do.
+     *   - nobody has touched the lead: its version is still 1, so no stage or
+     *     owner change, and nothing on it has been ticked off.
+     */
+    private function isNewWork(Builder $query): Builder
+    {
+        return $query
+            ->where('type', self::TYPE_FIRST_CALL)
+            ->orWhereHas('lead.stage', fn (Builder $s) => $s->where('type', 'INITIAL'))
+            ->orWhere(fn (Builder $q) => $q
+                ->whereHas('lead', fn (Builder $l) => $l->where('version', 1))
+                ->whereNotIn('lead_id', $this->leadsWithCompletedWork()));
     }
 
     /**
@@ -127,6 +151,29 @@ class TaskService
                     }
                 }
             ))
+
+            /*
+             | How soon it falls due — the second-line filter on Reminders.
+             |
+             | Bucket n is "due within the next n days but not the n-1 before
+             | it", so the buckets tile rather than nest: a to-do due tomorrow
+             | afternoon is in "2 days" only, not in "1 day" as well. Counted
+             | from now rather than from midnight, because "due in 1 day" means
+             | twenty-four hours, not "sometime tomorrow".
+             */
+            ->when($value('due'), fn (Builder $q, $v) => match ((string) $v) {
+                'overdue' => $q->overdue(),
+                '1', '2', '3' => $q->open()->whereBetween('due_at', [
+                    now()->addDays((int) $v - 1),
+                    now()->addDays((int) $v),
+                ]),
+                // Everything further out, and everything with no deadline at
+                // all — which would otherwise be unreachable from this row.
+                'later' => $q->open()->where(fn (Builder $w) => $w
+                    ->whereNull('due_at')
+                    ->orWhere('due_at', '>', now()->addDays(3))),
+                default => $q,
+            })
 
             ->when($value('status'), fn (Builder $q, $v) => match ($v) {
                 'open' => $q->open(),

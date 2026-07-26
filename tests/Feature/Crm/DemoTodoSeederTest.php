@@ -31,13 +31,10 @@ class DemoTodoSeederTest extends TestCase
 
         $props = $this->actingAs($owner)->get('/todos')->viewData('page')['props'];
 
-        // Both live tabs have open work, so neither reads as broken.
-        foreach (['fresh', 'followups'] as $tab) {
+        // Every tab has open work, so none of the three reads as broken.
+        foreach (['fresh', 'followups', 'reminders'] as $tab) {
             $this->assertGreaterThan(0, $props['tabCounts'][$tab], "The {$tab} tab is empty.");
         }
-
-        // Reminders is held empty on purpose, not by accident.
-        $this->assertSame(0, $props['tabCounts']['reminders']);
 
         $this->assertNotEmpty($props['tasks']['data']);
 
@@ -101,6 +98,22 @@ class DemoTodoSeederTest extends TestCase
         $this->seed(DemoTodoSeeder::class);
 
         $this->assertSame(0, Task::count());
+    }
+
+    public function test_every_due_bucket_on_the_reminders_tab_has_something_behind_it(): void
+    {
+        $this->seed(DatabaseSeeder::class);
+
+        $owner = User::role(Roles::OWNER)->firstOrFail();
+
+        // A chip that is always empty cannot be checked by eye.
+        foreach (['overdue', '1', '2', '3', 'later'] as $bucket) {
+            $rows = $this->actingAs($owner)
+                ->get("/todos?tab=reminders&due={$bucket}")
+                ->viewData('page')['props']['tasks']['data'];
+
+            $this->assertNotEmpty($rows, "The '{$bucket}' reminder bucket is empty.");
+        }
     }
 
     public function test_both_ways_of_looking_worked_are_demonstrated(): void

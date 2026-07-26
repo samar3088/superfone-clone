@@ -64,9 +64,24 @@ const TABS = [
     {
         key: 'reminders',
         label: 'Reminders',
-        emptyTitle: 'Not built yet',
-        emptyHint: 'Held empty on purpose until the client tells us what a Reminder should be. Nothing is hidden here — every to-do is on one of the other two tabs.',
+        emptyTitle: 'No reminders',
+        emptyHint: 'Anything raised as a REMINDER lands here, soonest first, whatever its lead is doing.',
     },
+];
+
+/**
+ * The second line on Reminders: how soon it falls due.
+ *
+ * The buckets tile rather than nest — a to-do due tomorrow afternoon is in
+ * "2 days" only, not in "1 day" as well — so the counts read as a countdown
+ * rather than as running totals.
+ */
+const DUE_BUCKETS = [
+    { value: 'overdue', label: 'Overdue' },
+    { value: '1', label: 'Due in 1 day' },
+    { value: '2', label: 'Due in 2 days' },
+    { value: '3', label: 'Due in 3 days' },
+    { value: 'later', label: 'Later' },
 ];
 
 /*
@@ -77,7 +92,7 @@ const TABS = [
  | should clear the filters, wherever the person happened to set them.
  */
 const FILTER_KEYS = [
-    'search', 'member', 'status', 'type',
+    'search', 'member', 'status', 'type', 'due',
     'team', 'due_from', 'due_to', 'lead_from', 'lead_to',
 ];
 
@@ -188,7 +203,11 @@ export default function TasksIndex({
                             <button
                                 key={t.key}
                                 type="button"
-                                onClick={() => go({ tab: t.key })}
+                                // The second-line filters belong to the tab
+                                // that offered them — a type chosen on Follow
+                                // Ups would otherwise silently narrow Reminders
+                                // to nothing, with no visible control saying so.
+                                onClick={() => go({ tab: t.key, type: undefined, due: undefined })}
                                 aria-current={tab === t.key ? 'page' : undefined}
                                 className={`relative shrink-0 px-5 py-3 text-sm font-semibold transition ${
                                     tab === t.key
@@ -213,17 +232,41 @@ export default function TasksIndex({
                         ))}
                     </div>
 
-                    {types.length > 0 && (
+                    {/*
+                        The second line, and what it holds depends on the tab.
+
+                        Fresh Leads has none at all: it is partly defined by
+                        task type, so a type filter there would be a control
+                        that contradicts the list it sits above.
+                    */}
+                    {tab === 'reminders' ? (
                         <div className="flex flex-wrap gap-2 px-4 py-3">
-                            <Chip active={activeType === ''} onClick={() => go({ type: undefined })}>
+                            <Chip active={!filters.due} onClick={() => go({ due: undefined })}>
                                 All
                             </Chip>
-                            {types.map((t) => (
-                                <Chip key={t} active={activeType === t} onClick={() => go({ type: t })}>
-                                    {t}
+                            {DUE_BUCKETS.map((b) => (
+                                <Chip
+                                    key={b.value}
+                                    active={filters.due === b.value}
+                                    onClick={() => go({ due: b.value })}
+                                >
+                                    {b.label}
                                 </Chip>
                             ))}
                         </div>
+                    ) : (
+                        types.length > 0 && (
+                            <div className="flex flex-wrap gap-2 px-4 py-3">
+                                <Chip active={activeType === ''} onClick={() => go({ type: undefined })}>
+                                    All
+                                </Chip>
+                                {types.map((t) => (
+                                    <Chip key={t} active={activeType === t} onClick={() => go({ type: t })}>
+                                        {t}
+                                    </Chip>
+                                ))}
+                            </div>
+                        )
                     )}
                 </div>
 

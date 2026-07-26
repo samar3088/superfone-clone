@@ -47,6 +47,21 @@ class DemoTodoSeeder extends Seeder
         ['SITE VISIT', 'Second viewing, bringing family', 54],
     ];
 
+    /**
+     * Reminders, one per due-date bucket.
+     *
+     * Deliberately one in each so the countdown row on that tab has something
+     * behind every chip — an overdue, then 1, 2 and 3 days out, then one
+     * further off. A bucket that is always empty cannot be checked.
+     */
+    private const REMINDERS = [
+        ['Chase the advance payment', -9],
+        ['Confirm the florist', 20],
+        ['Send the revised itinerary', 44],
+        ['Check the venue has the final headcount', 68],
+        ['Ask about the anniversary package', 24 * 9],
+    ];
+
     public function run(): void
     {
         // Only leads with an owner: an unassigned to-do is a reminder nobody
@@ -92,14 +107,31 @@ class DemoTodoSeeder extends Seeder
         $worked = $leads[6];
 
         $this->raise($worked, 'FIRST CALL', 'Rang and left a message', -30, done: true);
-        $this->raise($worked, 'REMINDER', 'Send the decorator shortlist', -2);
+        $this->raise($worked, 'CALLBACK REQUEST', 'Send the decorator shortlist', -2);
         $count += 2;
 
-        $this->command?->info("Demo to-dos seeded: {$count} across Fresh Leads and Follow Ups");
+        /*
+         | Reminders sit apart from all of that. A REMINDER goes to its own tab
+         | whatever its lead is doing, so these are spread over leads that
+         | already carry other work — which is also the only way to see that the
+         | precedence actually holds.
+         */
+        foreach (self::REMINDERS as $i => [$title, $hours]) {
+            $this->raise($leads[$i], 'REMINDER', $title, $hours, trigger: Task::TRIGGER_MANUAL);
+            $count++;
+        }
+
+        $this->command?->info("Demo to-dos seeded: {$count} across all three tabs");
     }
 
-    private function raise(Lead $lead, string $type, string $title, ?int $hours, bool $done = false): void
-    {
+    private function raise(
+        Lead $lead,
+        string $type,
+        string $title,
+        ?int $hours,
+        bool $done = false,
+        ?string $trigger = null,
+    ): void {
         Task::updateOrCreate(
             // Keyed so re-seeding rewrites the same rows instead of stacking
             // another set on top.
@@ -109,7 +141,9 @@ class DemoTodoSeeder extends Seeder
                 'integration_id' => $lead->integration_id,
                 // Still recorded honestly even though it no longer decides the
                 // tab: it says which rule raised the work.
-                'trigger' => $lead->is_existing ? Task::TRIGGER_EXISTING_LEAD : Task::TRIGGER_NEW_LEAD,
+                'trigger' => $trigger ?? ($lead->is_existing
+                    ? Task::TRIGGER_EXISTING_LEAD
+                    : Task::TRIGGER_NEW_LEAD),
                 'title' => $title,
                 'due_at' => $hours === null ? null : now()->addHours($hours),
                 'completed_at' => $done ? now()->subHours(6) : null,

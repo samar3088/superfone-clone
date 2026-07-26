@@ -85,39 +85,53 @@ Full detail in [01-lead-duplicate-rules.md](01-lead-duplicate-rules.md).
 | B6 | **Field Priority Order** does nothing — screen is deliberately read-only | What is it meant to change? Field order on a lead? Columns in a list? Which fields are mandatory? |
 | B7 | A **member can do their own work but delete nothing at all** | See B7 below — is anything on the "cannot" list something a member should be able to do? |
 | B8 | A note with **several leads to choose from must say which one** | See B8 below — should we instead default to the newest lead and not ask? |
-| B9 | **Fresh Leads means untouched; Follow Ups means everything else** | See B9 below — is "untouched" the right line, and what is a *Reminder*? |
+| B9 | **Reminders first, then Fresh Leads, then Follow Ups** | See B9 below — three points, including whether a completed first call should move a lead out of Fresh |
 
 ### B9. What the three To-Dos tabs hold
 
-Work is split by **whether anyone has acted on the lead yet**, not by what
-raised the to-do.
+Read in this order. The order is what makes the three exhaustive and
+non-overlapping — every to-do lands on exactly one, so nothing is hidden and
+nothing is counted twice.
 
-| Tab | Holds |
+| # | Tab | Holds |
+|---|---|---|
+| 1 | **Reminders** | Anything of type **REMINDER**, whatever its lead is doing |
+| 2 | **Fresh Leads** | Anything else that is new work — see below |
+| 3 | **Follow Ups** | Everything left |
+
+**Fresh Leads** takes a to-do if *any one* of these is true:
+
+- the to-do is a **FIRST CALL**. Nothing is more clearly new work, so it stays
+  Fresh even after the lead has moved on.
+- the lead is still at **New Inquiry**. Keyed on the stage's `INITIAL` type, not
+  the name — the client can rename stages in Settings, and a rule keyed on a
+  name breaks silently when they do.
+- **nobody has touched the lead**: its version is still 1, so no stage or owner
+  change, and nothing on it has been ticked off.
+
+**Second-line filters differ by tab**, because a single row would be wrong on
+two of the three:
+
+| Tab | Second line |
 |---|---|
-| **Fresh Leads** | Work on leads nobody has touched |
-| **Follow Ups** | Everything else |
-| **Reminders** | **Deliberately empty**, pending the client |
+| Fresh Leads | **None.** The tab is partly defined by task type, so a type filter would contradict the list beneath it |
+| Follow Ups | Task-type chips, minus FIRST CALL and REMINDER — neither can appear here |
+| Reminders | How soon it falls due: **Overdue · 1 day · 2 days · 3 days · Later** |
 
-Two things count as having touched a lead:
+The due buckets **tile rather than nest** — something due tomorrow afternoon is
+in *2 days* only, not in *1 day* as well — so the row reads as a countdown
+rather than as running totals. Counted from now, not from midnight: *due in 1
+day* means twenty-four hours.
 
-1. **The lead has moved** — its stage or owner has changed. Every lead carries a
-   version that starts at 1 and steps on each change, so anything above 1 has
-   been handled by somebody.
-2. **A to-do on it has been ticked off.** This can happen without the stage
-   moving at all: a first call made, nothing agreed yet. Checking only the stage
-   would leave that lead sitting in Fresh Leads as though nobody had rung.
-
-Fresh is neither of those; Follow Ups is either. Between them they cover **every**
-to-do, which matters while Reminders is empty — nothing can fall down the gap.
-
-> **Confirm two things.**
+> **Confirm three things.**
 >
-> 1. Is *untouched* the right line for Fresh Leads, or does the client mean
->    something narrower — say, only leads that have never even been opened?
-> 2. **What is a Reminder?** The tab is built and held empty on purpose rather
->    than filled with a guess. A guess gets worked; an empty tab gets asked
->    about. Candidates: to-dos somebody set for themselves by hand, or dated
->    nudges unattached to any lead.
+> 1. A lead still at **New Inquiry stays in Fresh Leads even after its first
+>    call is ticked off**, because *"or status is new inquiry"* was given as its
+>    own condition. If a completed call should move it out, that is a one-line
+>    change.
+> 2. Is **FIRST CALL** the only type that should hold a to-do in Fresh Leads?
+> 3. Are **1 / 2 / 3 days and Later** the right due buckets, or does the client
+>    want a different horizon — this week, this month?
 
 ### B7. What a team member can and cannot do
 
@@ -215,9 +229,8 @@ Full detail in [02-go-live-plan.md](02-go-live-plan.md) §2.
 - **SMTP is not configured.** Mail currently writes to a log file.
 - The **To-Dos screen** now follows the client's reference: Fresh Leads / Follow
   Ups / Reminders tabs, task-type chips, a usage-by-team summary and a card per
-  to-do with call and WhatsApp actions. What each tab holds is B9 above, and the
-  **Reminders tab is empty on purpose** — it says so on screen rather than
-  looking broken.
+  to-do with call and WhatsApp actions. What each tab holds, and which
+  second-line filter it carries, is B9 above.
 - **Two things are called notes.** The contact record has a single free-text
   field, filled when the contact is created or imported; separately there is a
   dated note trail (B8). The contact page labels the first *"On the contact

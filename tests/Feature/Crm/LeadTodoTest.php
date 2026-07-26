@@ -3,6 +3,7 @@
 namespace Tests\Feature\Crm;
 
 use App\Mail\NewLeadMail;
+use App\Models\Customer;
 use App\Models\Integration;
 use App\Models\Lead;
 use App\Models\LeadStage;
@@ -400,7 +401,9 @@ class LeadTodoTest extends TestCase
     {
         $this->withRules([
             'new_lead_enabled' => true, 'todo_enabled' => true,
-            'todo_type' => 'FIRST CALL', 'todo_title' => 'Call',
+            // Not a first call: those stay Fresh whatever the lead does, which
+            // is the point of the test below this one.
+            'todo_type' => 'SITE VISIT', 'todo_title' => 'Visit',
         ]);
 
         $lead = $this->arrive();
@@ -419,7 +422,49 @@ class LeadTodoTest extends TestCase
         $this->assertSame(1, $props()['tabCounts']['followups']);
     }
 
-    public function test_ticking_one_to_do_off_moves_the_rest_of_that_leads_work(): void
+    public function test_an_untouched_lead_at_a_later_stage_stays_fresh_until_something_is_done(): void
+    {
+        /*
+         | A lead entered straight into a later stage — a deal that was already
+         | half agreed when it was written down. It is not at New Inquiry and
+         | its first call is not outstanding, so the only thing keeping it in
+         | Fresh Leads is that nobody has done anything to it yet.
+         */
+        $lead = Lead::create([
+            'customer_id' => Customer::create([
+                'name' => 'Walk In', 'mobile' => '9876511111', 'last_activity_at' => now(),
+            ])->id,
+            'name' => 'Walk In',
+            'mobile' => '9876511111',
+            'source' => 'manual',
+            'lead_stage_id' => LeadStage::where('type', '!=', 'INITIAL')->value('id'),
+            'assigned_to' => $this->member->id,
+        ]);
+
+        $done = Task::create([
+            'lead_id' => $lead->id, 'assigned_to' => $this->member->id,
+            'type' => 'SITE VISIT', 'title' => 'Showed them round',
+        ]);
+
+        Task::create([
+            'lead_id' => $lead->id, 'assigned_to' => $this->member->id,
+            'type' => 'CALLBACK REQUEST', 'title' => 'Ring back Friday',
+        ]);
+
+        $counts = fn () => $this->actingAs($this->member)->get('/todos')
+            ->viewData('page')['props']['tabCounts'];
+
+        $this->assertSame(2, $counts()['fresh']);
+
+        // Ticking one off is enough: somebody has clearly picked this lead up,
+        // so the work still outstanding on it is a follow-up, not a fresh start.
+        $this->actingAs($this->member)->patch("/todos/{$done->id}/complete");
+
+        $this->assertSame(0, $counts()['fresh']);
+        $this->assertSame(1, $counts()['followups']);
+    }
+
+    public function test_a_reminder_goes_to_its_own_tab_whatever_the_lead_is_doing(): void
     {
         $this->withRules([
             'new_lead_enabled' => true, 'todo_enabled' => true,
@@ -428,53 +473,128 @@ class LeadTodoTest extends TestCase
 
         $lead = $this->arrive();
 
-        // A second job on the same lead, still outstanding.
-        $open = Task::create([
+        // On a completely untouched lead, which would otherwise be Fresh.
+        Task::create([
             'lead_id' => $lead->id,
             'assigned_to' => $this->member->id,
-            'type' => 'FOLLOW-UP CALL',
-            'title' => 'Send the quote',
+            'type' => 'REMINDER',
+            'title' => 'Chase the advance',
+            'due_at' => now()->addHours(5),
         ]);
 
-        /*
-         | Completing the first one is enough on its own — the stage has not
-         | moved, but somebody has clearly picked this lead up, so the work
-         | still outstanding on it is a follow-up rather than a fresh start.
-         */
-        $this->actingAs($this->member)->patch('/todos/'.Task::whereKeyNot($open->id)->value('id').'/complete');
+        $counts = $this->actingAs($this->member)->get('/todos')
+            ->viewData('page')['props']['tabCounts'];
 
-        $props = fn (string $query) => $this->actingAs($this->member)
-            ->get("/todos{$query}")->viewData('page')['props'];
-
-        // Narrowed to open work, because the completed one lands on Follow Ups
-        // as well — its own lead has been picked up, which is the whole point.
-        $rows = $props('?tab=followups&status=open')['tasks']['data'];
-
-        $this->assertCount(1, $rows);
-        $this->assertSame($open->id, $rows[0]['id']);
-        $this->assertCount(0, $props('?status=open')['tasks']['data']);
+        $this->assertSame(1, $counts['reminders']);
+        $this->assertSame(1, $counts['fresh'], 'The first call should still be Fresh.');
+        $this->assertSame(0, $counts['followups']);
     }
 
-    public function test_reminders_is_held_empty_and_hides_nothing(): void
+    public function test_the_three_tabs_hold_every_to_do_between_them(): void
     {
         $this->withRules([
             'new_lead_enabled' => true, 'todo_enabled' => true,
             'todo_type' => 'FIRST CALL', 'todo_title' => 'Call',
         ]);
 
-        $this->arrive();
+        $lead = $this->arrive();
 
-        $props = $this->actingAs($this->member)->get('/todos?tab=reminders')
-            ->viewData('page')['props'];
+        foreach (['REMINDER', 'SITE VISIT', 'CALLBACK REQUEST'] as $type) {
+            Task::create([
+                'lead_id' => $lead->id, 'assigned_to' => $this->member->id,
+                'type' => $type, 'title' => $type, 'due_at' => now()->addHours(5),
+            ]);
+        }
 
-        $this->assertCount(0, $props['tasks']['data']);
-        $this->assertSame(0, $props['tabCounts']['reminders']);
+        $counts = $this->actingAs($this->member)->get('/todos')
+            ->viewData('page')['props']['tabCounts'];
 
-        // Nothing falls down the gap: every to-do is on one of the other two.
+        // Exhaustive and non-overlapping: nothing hidden, nothing counted twice.
         $this->assertSame(
             Task::query()->open()->count(),
-            $props['tabCounts']['fresh'] + $props['tabCounts']['followups'],
+            array_sum($counts),
         );
+    }
+
+    public function test_a_first_call_stays_fresh_even_once_the_lead_has_moved(): void
+    {
+        $this->withRules([
+            'new_lead_enabled' => true, 'todo_enabled' => true,
+            'todo_type' => 'FIRST CALL', 'todo_title' => 'Call',
+        ]);
+
+        $lead = $this->arrive();
+
+        $this->actingAs($this->member)->patch("/leads/{$lead->id}/status", [
+            'version' => $lead->fresh()->version,
+            'lead_stage_id' => LeadStage::where('type', 'FINAL_POSITIVE')->value('id'),
+        ])->assertSessionHasNoErrors();
+
+        // Nothing is more clearly new work than a call that has not been made.
+        $counts = $this->actingAs($this->member)->get('/todos')
+            ->viewData('page')['props']['tabCounts'];
+
+        $this->assertSame(1, $counts['fresh']);
+        $this->assertSame(0, $counts['followups']);
+    }
+
+    public function test_the_type_chips_only_appear_where_they_mean_something(): void
+    {
+        $this->withRules([
+            'new_lead_enabled' => true, 'todo_enabled' => true,
+            'todo_type' => 'SITE VISIT', 'todo_title' => 'Visit',
+        ]);
+
+        $lead = $this->arrive();
+
+        $lead->forceFill(['version' => 2, 'lead_stage_id' => LeadStage::where('type', 'FINAL_POSITIVE')->value('id')])->save();
+
+        $props = fn (string $q) => $this->actingAs($this->member)
+            ->get("/todos{$q}")->viewData('page')['props'];
+
+        // Fresh Leads is partly defined by type, so a type filter there would
+        // contradict the list above it. Reminders is a single type.
+        $this->assertEmpty($props('')['types']);
+        $this->assertEmpty($props('?tab=reminders')['types']);
+
+        $types = $props('?tab=followups')['types'];
+
+        $this->assertContains('SITE VISIT', $types);
+        $this->assertNotContains('FIRST CALL', $types);
+        $this->assertNotContains('REMINDER', $types);
+    }
+
+    public function test_reminders_can_be_narrowed_to_how_soon_they_fall_due(): void
+    {
+        $lead = $this->arrive();
+
+        $due = [
+            'overdue' => now()->subHours(3),
+            'tomorrow' => now()->addHours(20),
+            'day two' => now()->addHours(44),
+            'far off' => now()->addDays(9),
+        ];
+
+        foreach ($due as $label => $when) {
+            Task::create([
+                'lead_id' => $lead->id, 'assigned_to' => $this->member->id,
+                'type' => 'REMINDER', 'title' => $label, 'due_at' => $when,
+            ]);
+        }
+
+        $titles = fn (string $bucket) => collect(
+            $this->actingAs($this->member)
+                ->get("/todos?tab=reminders&due={$bucket}")
+                ->viewData('page')['props']['tasks']['data']
+        )->pluck('title')->all();
+
+        $this->assertSame(['overdue'], $titles('overdue'));
+        $this->assertSame(['tomorrow'], $titles('1'));
+        $this->assertSame(['day two'], $titles('2'));
+
+        // The buckets tile rather than nest — day two is not also in "1 day".
+        $this->assertSame([], $titles('3'));
+        $this->assertSame(['far off'], $titles('later'));
     }
 
     public function test_the_team_card_counts_open_work_against_the_contacts_team(): void

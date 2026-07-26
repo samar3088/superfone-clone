@@ -18,7 +18,7 @@ class TaskController extends Controller
 {
     /** Everything the filter row owns, and everything Reset clears. */
     private const FILTER_KEYS = [
-        'search', 'member', 'status', 'type', 'team',
+        'search', 'member', 'status', 'type', 'due', 'team',
         'due_from', 'due_to', 'lead_from', 'lead_to',
     ];
 
@@ -59,8 +59,7 @@ class TaskController extends Controller
                 ? User::role([Roles::OWNER, Roles::MEMBER])->orderBy('name')->get(['id', 'name'])
                 : [],
             'teams' => Team::orderBy('name')->get(['id', 'name']),
-            // Only types that actually exist, so no chip leads to an empty list.
-            'types' => $this->chipTypes(),
+            'types' => $this->chipTypes($tab),
             'tabCounts' => $this->tasks->tabCounts($base),
             'usageByTeam' => $this->tasks->usageByTeam($base),
         ]);
@@ -77,15 +76,29 @@ class TaskController extends Controller
     }
 
     /**
-     * Task types offered as chips.
+     * Task types offered as chips, for the one tab where they mean anything.
+     *
+     * Fresh Leads is partly *defined* by type, so filtering it by type is a
+     * contradiction dressed as a control; Reminders is a single type, so the
+     * row would offer one choice. Follow Ups is the only tab holding a mix.
      *
      * Ordered by the canonical list so the row reads the same way every time,
      * with anything unexpected — a type typed by hand into a rule — appended
      * rather than hidden.
      */
-    private function chipTypes(): array
+    private function chipTypes(string $tab): array
     {
-        $present = Task::query()->distinct()->pluck('type')->all();
+        if ($tab !== TaskService::TAB_FOLLOWUPS) {
+            return [];
+        }
+
+        $present = Task::query()
+            // The two that decide a tab on their own can never appear here.
+            ->whereNotIn('type', [TaskService::TYPE_FIRST_CALL, TaskService::TYPE_REMINDER])
+            ->distinct()
+            ->pluck('type')
+            ->all();
+
         $known = LeadProviders::todoTypes();
 
         return [
