@@ -34,14 +34,20 @@ class ContactNameTest extends TestCase
 
     /* ── Whichever side is written ────────────────────── */
 
-    public function test_a_whole_name_fills_in_its_two_halves(): void
+    public function test_a_whole_name_goes_wholly_into_the_first_name(): void
     {
         $customer = Customer::create([
             'name' => 'Asha Rao', 'mobile' => '9876500001', 'last_activity_at' => now(),
         ]);
 
-        $this->assertSame('Asha', $customer->first_name);
-        $this->assertSame('Rao', $customer->last_name);
+        /*
+         | Not split. A whole name is not a split, and there is no rule that
+         | finds one — so the last name stays empty until something actually
+         | states it, rather than carrying a guess that reads as fact.
+         */
+        $this->assertSame('Asha Rao', $customer->first_name);
+        $this->assertNull($customer->last_name);
+        $this->assertSame('Asha Rao', $customer->name);
     }
 
     public function test_two_halves_build_the_whole_name(): void
@@ -54,16 +60,15 @@ class ContactNameTest extends TestCase
         $this->assertSame('Asha Rao', $customer->name);
     }
 
-    public function test_a_middle_name_stays_with_the_first(): void
+    public function test_a_three_part_name_is_not_carved_up(): void
     {
         $customer = Customer::create([
             'name' => 'Asha Devi Rao', 'mobile' => '9876500001', 'last_activity_at' => now(),
         ]);
 
-        // Split on the last space. The alternative loses the middle name
-        // entirely, and it never comes back.
-        $this->assertSame('Asha Devi', $customer->first_name);
-        $this->assertSame('Rao', $customer->last_name);
+        // Is Devi a middle name or half the surname? Unknowable, so unguessed.
+        $this->assertSame('Asha Devi Rao', $customer->first_name);
+        $this->assertNull($customer->last_name);
     }
 
     public function test_a_one_word_name_leaves_the_last_half_empty(): void
@@ -81,15 +86,18 @@ class ContactNameTest extends TestCase
     public function test_editing_either_side_keeps_the_other_in_step(): void
     {
         $customer = Customer::create([
-            'name' => 'Asha Rao', 'mobile' => '9876500001', 'last_activity_at' => now(),
+            'first_name' => 'Asha', 'last_name' => 'Rao',
+            'mobile' => '9876500001', 'last_activity_at' => now(),
         ]);
 
         $customer->update(['last_name' => 'Sharma']);
         $this->assertSame('Asha Sharma', $customer->fresh()->name);
 
+        // Writing the whole name replaces both halves — the stated split is
+        // gone, so keeping half of it would leave the record self-contradictory.
         $customer->update(['name' => 'Ravi Kumar']);
-        $this->assertSame('Ravi', $customer->fresh()->first_name);
-        $this->assertSame('Kumar', $customer->fresh()->last_name);
+        $this->assertSame('Ravi Kumar', $customer->fresh()->first_name);
+        $this->assertNull($customer->fresh()->last_name);
     }
 
     public function test_a_split_that_does_not_round_trip_is_kept_as_given(): void
@@ -141,7 +149,7 @@ class ContactNameTest extends TestCase
         $this->assertSame('Devi Rao', $lead->customer->last_name);
     }
 
-    public function test_a_facebook_form_that_sends_only_a_whole_name_is_split_for_us(): void
+    public function test_a_facebook_form_that_sends_only_a_whole_name_leaves_the_surname_empty(): void
     {
         Mail::fake();
 
@@ -152,8 +160,9 @@ class ContactNameTest extends TestCase
             'created_time' => now()->toIso8601String(),
         ]);
 
-        $this->assertSame('Ravi', $lead->customer->first_name);
-        $this->assertSame('Kumar', $lead->customer->last_name);
+        // The form gave one field, so we record one field.
+        $this->assertSame('Ravi Kumar', $lead->customer->first_name);
+        $this->assertNull($lead->customer->last_name);
     }
 
     public function test_the_create_contact_form_writes_both_halves(): void

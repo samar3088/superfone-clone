@@ -321,7 +321,7 @@ class ContactImportService
              | is never re-split by guesswork on the way back out.
              */
             [$first, $last] = ($data['name'] ?? '') !== ''
-                ? Customer::splitName($data['name'])
+                ? Customer::nameParts($data['name'])
                 : [$data['first_name'] ?? '', $data['last_name'] ?? null];
 
             $name = trim(trim((string) $first).' '.trim((string) $last));

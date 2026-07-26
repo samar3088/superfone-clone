@@ -18,7 +18,7 @@ class Customer extends Model
 
     protected $fillable = [
         'team_id', 'created_by',
-        'name', 'first_name', 'last_name',
+        'name', 'first_name', 'last_name', 'name_key',
         'mobile', 'email', 'city', 'notes', 'last_activity_at',
         'website', 'business_name', 'house_no', 'address_1', 'address_2',
         'additional_info', 'merged_into_id', 'merged_at',
@@ -65,32 +65,57 @@ class Customer extends Model
             }
 
             if ($customer->isDirty('name')) {
-                [$first, $last] = self::splitName($customer->name);
+                [$first, $last] = self::nameParts($customer->name);
 
                 $customer->first_name = $first;
                 $customer->last_name = $last;
             }
         });
+
+        // After the name is settled, whichever side set it.
+        static::saving(function (self $customer): void {
+            if ($customer->isDirty('name')) {
+                $customer->name_key = self::nameKey($customer->name);
+            }
+        });
     }
 
     /**
-     * Split a whole name for the two-column template.
+     * A name reduced to something comparable, for finding duplicates.
      *
-     * On the *last* space, so "Asha Devi Rao" keeps its middle name with the
-     * first rather than dropping it. Names that do not split at all — one word,
-     * a business — keep everything in the first half and leave the last empty,
-     * which is truthful rather than inventing a surname.
-     *
-     * @return array{0: string, 1: string|null}
+     * Lower case, punctuation dropped, runs of spaces collapsed — so "Asha
+     * Rao", "asha rao" and "Asha  Rao." all key the same and group together.
+     * Deliberately not clever: no phonetics, no nicknames. A key that matches
+     * too eagerly puts unrelated people in front of someone about to merge
+     * them, and one bad merge costs more than ten missed ones.
      */
-    public static function splitName(?string $name): array
+    public static function nameKey(?string $name): string
     {
-        $name = trim((string) $name);
-        $cut = mb_strrpos($name, ' ');
+        $key = mb_strtolower(trim((string) $name));
+        $key = preg_replace('/[^\p{L}\p{N}\s]+/u', '', $key);
 
-        return $cut === false
-            ? [$name, null]
-            : [mb_substr($name, 0, $cut), mb_substr($name, $cut + 1)];
+        return trim(preg_replace('/\s+/', ' ', (string) $key));
+    }
+
+    /**
+     * Where a whole name goes when that is all the source gave us.
+     *
+     * All of it into the first name, none of it into the last. A whole name is
+     * not a split, and there is no rule that finds one: "Asha Devi Rao" has no
+     * knowable boundary, and plenty of names have no surname at all. Guessing
+     * would be right often enough to be trusted and wrong often enough to
+     * matter — and once written, a guess reads as fact.
+     *
+     * The last name is filled only when something actually told us it: the
+     * client's two-column import template, a Facebook form with separate
+     * fields, or a person typing into the two boxes on the contact form. Anyone
+     * can correct it afterwards, which a derived value would undo on next save.
+     *
+     * @return array{0: string, 1: null}
+     */
+    public static function nameParts(?string $name): array
+    {
+        return [trim((string) $name), null];
     }
 
     public function leads(): HasMany

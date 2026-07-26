@@ -8,6 +8,7 @@ import { Button } from '@/components/ui-kit';
 import { useColumns } from '@/hooks/use-columns';
 import CreateContact, { ContactOptions } from './create-contact';
 import DownloadContacts from './download-contacts';
+import Duplicates from './duplicates';
 import ImportContacts from './import-contacts';
 import NotesModal from './notes';
 import {
@@ -85,6 +86,7 @@ export default function CustomersIndex({
     const [menuOpen, setMenuOpen] = useState(false);
     const [notesFor, setNotesFor] = useState<Customer | null>(null);
     const [downloading, setDownloading] = useState(false);
+    const [dedupe, setDedupe] = useState(false);
 
     const [visibleColumns, setVisibleColumns] = useColumns('customers.columns', DEFAULT_COLUMNS);
 
@@ -288,6 +290,9 @@ export default function CustomersIndex({
                                     <MenuItem onClick={() => { setMenuOpen(false); setDownloading(true); }}>
                                         Download
                                     </MenuItem>
+                                    <MenuItem onClick={() => { setMenuOpen(false); setDedupe(true); }}>
+                                        Delete duplicates
+                                    </MenuItem>
                                     <MenuItem onClick={() => { setMenuOpen(false); setTableSettings(true); }}>
                                         Table settings
                                     </MenuItem>
@@ -382,6 +387,8 @@ export default function CustomersIndex({
             )}
 
             {notesFor && <NotesModal customer={notesFor} onClose={() => setNotesFor(null)} />}
+
+            {dedupe && <Duplicates onClose={() => setDedupe(false)} />}
 
             {downloading && (
                 <DownloadContacts

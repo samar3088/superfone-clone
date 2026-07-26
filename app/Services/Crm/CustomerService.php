@@ -172,6 +172,10 @@ class CustomerService
             foreach ($duplicates as $duplicate) {
                 $duplicate->leads()->update(['customer_id' => $target->id]);
                 $duplicate->calls()->update(['customer_id' => $target->id]);
+                // Notes travel too. Left behind they would follow the tombstone
+                // out of every list and be unreachable — the one thing on a
+                // contact that only a person can have written.
+                $duplicate->notes()->update(['customer_id' => $target->id]);
 
                 /*
                  | Their numbers and addresses come too, demoted from primary —
@@ -329,6 +333,97 @@ class CustomerService
             })
             ->limit(10)
             ->get(['id', 'name', 'mobile', 'email']);
+    }
+
+    /**
+     * Contacts that look like the same person, grouped.
+     *
+     * Two contacts can never share a phone number or an email address — the
+     * channels table has a unique index on the value, so the obvious kind of
+     * duplicate cannot exist. What is left is the same person entered twice
+     * under two different numbers: a typo, a second SIM, a walk-in added by
+     * hand who was already on file from a campaign.
+     *
+     * So the only thing that can pair them is the name, and a name alone is
+     * weak evidence. Groups are ranked by what else agrees, and nothing is ever
+     * merged without someone looking — a wrong merge is not undoable from the
+     * screen, and one of those costs more than ten duplicates left alone.
+     *
+     * @return array<int, array{key: string, confidence: string, reason: string, customers: array<int, array<string, mixed>>}>
+     */
+    public function duplicateGroups(int $limit = 50): array
+    {
+        /*
+         | One indexed pass to find which names repeat, then one query for the
+         | rows in those groups. The alternative — comparing every contact with
+         | every other — is 78 million comparisons at the 12,500 contacts
+         | waiting to be imported.
+         */
+        $keys = Customer::active()
+            ->whereNotNull('name_key')
+            ->where('name_key', '!=', '')
+            ->groupBy('name_key')
+            ->havingRaw('count(*) > 1')
+            ->limit($limit)
+            ->pluck('name_key');
+
+        if ($keys->isEmpty()) {
+            return [];
+        }
+
+        return Customer::active()
+            ->whereIn('name_key', $keys)
+            ->withCount(['leads', 'calls', 'notes'])
+            ->orderBy('name_key')
+            ->orderBy('id')
+            ->get(['id', 'name_key', 'name', 'mobile', 'email', 'city',
+                'business_name', 'created_at', 'last_activity_at'])
+            ->groupBy('name_key')
+            ->map(fn ($group) => $this->describeGroup($group))
+            ->values()
+            ->sortBy(fn (array $g) => match ($g['confidence']) {
+                'high' => 0, 'medium' => 1, default => 2,
+            })
+            ->values()
+            ->all();
+    }
+
+    /**
+     * How much to trust one group, and why — the "why" being the part someone
+     * actually reads before deciding.
+     */
+    private function describeGroup($group): array
+    {
+        $cities = $group->pluck('city')->filter()->unique();
+        $businesses = $group->pluck('business_name')->filter()->unique();
+
+        // Same name and the same business, or the same name and the same town.
+        // Neither is proof; both are more than a name on its own.
+        [$confidence, $reason] = match (true) {
+            $businesses->count() === 1 && $group->whereNotNull('business_name')->count() > 1 => ['high', 'Same name and the same business'],
+
+            $cities->count() === 1 && $group->whereNotNull('city')->count() > 1 => ['medium', 'Same name and the same city'],
+
+            default => ['low', 'Same name only — check before merging'],
+        };
+
+        return [
+            'key' => (string) $group->first()->name_key,
+            'confidence' => $confidence,
+            'reason' => $reason,
+            'customers' => $group->map(fn (Customer $c) => [
+                'id' => $c->id,
+                'name' => $c->name,
+                'mobile' => $c->mobile,
+                'email' => $c->email,
+                'city' => $c->city,
+                'business_name' => $c->business_name,
+                'leads_count' => $c->leads_count,
+                'calls_count' => $c->calls_count,
+                'notes_count' => $c->notes_count,
+                'created_at' => $c->created_at?->toDateString(),
+            ])->values()->all(),
+        ];
     }
 
     private function emailTaken(string $email, int $ignoreId): bool

@@ -120,14 +120,28 @@ class DownloadContactsTest extends TestCase
         );
     }
 
-    public function test_the_name_is_split_on_the_last_space(): void
+    public function test_a_name_nobody_split_comes_out_whole_in_the_first_column(): void
     {
         Customer::create(['name' => 'Asha Devi Rao', 'mobile' => '9876500003', 'last_activity_at' => now()]);
 
         $csv = $this->download(['columns' => 'first_name,last_name']);
 
-        // The middle name stays with the first — the alternative loses it.
-        $this->assertStringContainsString('"Asha Devi",Rao', $csv);
+        // Never carved up on the way out. Nobody stated where the surname
+        // begins, so the download does not claim to know either.
+        $this->assertStringContainsString('"Asha Devi Rao",', $csv);
+    }
+
+    public function test_a_stated_split_comes_out_in_both_columns(): void
+    {
+        Customer::create([
+            'first_name' => 'Asha', 'last_name' => 'Rao',
+            'mobile' => '9876500004', 'last_activity_at' => now(),
+        ]);
+
+        $this->assertStringContainsString(
+            'Asha,Rao',
+            $this->download(['columns' => 'first_name,last_name']),
+        );
     }
 
     public function test_a_second_number_comes_out_in_the_secondary_column(): void

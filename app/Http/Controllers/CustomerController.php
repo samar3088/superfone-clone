@@ -265,6 +265,22 @@ class CustomerController extends Controller
      * Which columns come out is the caller's choice; the order is always the
      * canonical one, so two downloads of the same tick-boxes are the same file.
      */
+    /**
+     * Contacts that look like the same person.
+     *
+     * Owner-only, and read-only: this only shows what merging would affect.
+     * The merge itself goes through the same guarded endpoint as everything
+     * else, one group at a time, after somebody has looked.
+     */
+    public function duplicates(Request $request): JsonResponse
+    {
+        abort_unless($request->user()?->can(Permissions::CUSTOMER_MERGE), 403);
+
+        return response()->json([
+            'groups' => $this->customers->duplicateGroups(),
+        ]);
+    }
+
     public function export(CustomerFilterRequest $request): StreamedResponse
     {
         $columns = ContactColumns::resolve(
