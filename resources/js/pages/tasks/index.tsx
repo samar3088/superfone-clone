@@ -1,8 +1,9 @@
 import { Head, Link, router } from '@inertiajs/react';
+import { useState } from 'react';
 
+import { AdvancedFilters, FilterGroup } from '@/components/advanced-filters';
 import { DataTable, Paginated } from '@/components/data-table';
 import {
-    DateRangeFilter,
     FilterForm,
     Filters,
     FilterSearch,
@@ -48,13 +49,15 @@ const TABS = [
 ];
 
 /*
- | "type" has no control in the form — it is the chip row above the list. It is
- | listed anyway so Reset clears the chip too, which is what someone means when
- | they clear the filters.
+ | Everything Reset clears — including the two that have no control in the row.
+ |
+ | "type" is the chip row above the list, and the last four live behind
+ | "Add more filters". They are listed here anyway, because clearing the filters
+ | should clear the filters, wherever the person happened to set them.
  */
 const FILTER_KEYS = [
-    'search', 'member', 'status', 'team', 'type',
-    'due_from', 'due_to', 'lead_from', 'lead_to',
+    'search', 'member', 'status', 'type',
+    'team', 'due_from', 'due_to', 'lead_from', 'lead_to',
 ];
 
 export default function TasksIndex({
@@ -67,6 +70,31 @@ export default function TasksIndex({
     tabCounts,
     usageByTeam,
 }: Props) {
+    const [moreFilters, setMoreFilters] = useState(false);
+
+    /*
+     | Three controls stay in the row: what you are looking for, whether it is
+     | still open, and whose it is. Those are the ones reached for constantly.
+     |
+     | The rest go behind "Add more filters" rather than growing the row until
+     | it scrolls sideways and hides its own Export button — which is exactly
+     | what happened on Leads.
+     */
+    const filterGroups: FilterGroup[] = [
+        { name: 'due', label: 'Task due date', kind: 'dates', fromName: 'due_from', toName: 'due_to' },
+        {
+            name: 'team',
+            label: 'Team name',
+            options: teams.map((t) => ({ value: String(t.id), label: t.name })),
+        },
+        { name: 'created', label: 'Lead created date', kind: 'dates', fromName: 'lead_from', toName: 'lead_to' },
+    ];
+
+    // On the button, so the count survives a page load.
+    const advancedCount = filterGroups.filter((g) =>
+        g.kind === 'dates' ? filters[g.fromName!] || filters[g.toName!] : filters[g.name],
+    ).length;
+
     /*
      | The tab and the type chip are not part of the filter form — they apply on
      | click rather than waiting for the Filter button, because they read as
@@ -94,16 +122,6 @@ export default function TasksIndex({
                 <FilterForm url="/todos" filters={{ ...filters, tab }} keys={FILTER_KEYS}>
                     <FilterSearch placeholder="Search to-dos…" />
 
-                    <FilterField label="Task due date">
-                        <DateRangeFilter fromName="due_from" toName="due_to" />
-                    </FilterField>
-
-                    <FilterSelect
-                        name="team"
-                        label="All teams"
-                        options={teams.map((t) => ({ value: String(t.id), label: t.name }))}
-                    />
-
                     <FilterSelect
                         name="status"
                         label="All statuses"
@@ -125,9 +143,18 @@ export default function TasksIndex({
                         />
                     )}
 
-                    <FilterField label="Lead created date">
-                        <DateRangeFilter fromName="lead_from" toName="lead_to" />
-                    </FilterField>
+                    <button
+                        type="button"
+                        onClick={() => setMoreFilters(true)}
+                        className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-dashed border-input px-3 text-sm font-medium transition hover:bg-muted"
+                    >
+                        ＋ Add more filters
+                        {advancedCount > 0 && (
+                            <span className="tabular rounded-full bg-primary px-1.5 text-xs font-bold text-primary-foreground">
+                                {advancedCount}
+                            </span>
+                        )}
+                    </button>
                 </FilterForm>
 
                 {usageByTeam.length > 0 && <UsageByTeam rows={usageByTeam} />}
@@ -187,23 +214,18 @@ export default function TasksIndex({
                     renderCard={(t) => <TaskCard task={t} />}
                 />
             </div>
-        </ConsoleLayout>
-    );
-}
 
-/**
- * A labelled slot on the filter row.
- *
- * The row carries two date ranges — when the to-do is due, and when the lead
- * came in — and four bare date boxes side by side say nothing about which is
- * which. Inline rather than stacked so the row keeps one height.
- */
-function FilterField({ label, children }: { label: string; children: React.ReactNode }) {
-    return (
-        <div className="flex shrink-0 items-center gap-1.5">
-            <span className="whitespace-nowrap text-xs font-medium text-muted-foreground">{label}</span>
-            {children}
-        </div>
+            {moreFilters && (
+                <AdvancedFilters
+                    url="/todos"
+                    // The tab rides along, so applying from the panel keeps you
+                    // on the list you were reading.
+                    filters={{ ...filters, tab }}
+                    groups={filterGroups}
+                    onClose={() => setMoreFilters(false)}
+                />
+            )}
+        </ConsoleLayout>
     );
 }
 

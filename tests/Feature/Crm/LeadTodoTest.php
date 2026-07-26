@@ -438,5 +438,9 @@ class LeadTodoTest extends TestCase
 
         // And a different team excludes it.
         $this->assertCount(0, $rows('team='.($team->id + 99)));
+
+        // "Add more filters" sends a comma-joined list, since the panel ticks
+        // several teams at once where the old single select could not.
+        $this->assertCount(1, $rows('team='.($team->id + 99).",{$team->id}"));
     }
 }
