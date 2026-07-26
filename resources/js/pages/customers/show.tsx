@@ -3,6 +3,7 @@ import { FormEvent, ReactNode, useState } from 'react';
 
 import { Button, Field, Modal, Pill, inputClass } from '@/components/ui-kit';
 import ConsoleLayout from '@/layouts/console-layout';
+import { LeadChoice, Note, NoteComposer, NoteList } from './notes';
 
 interface Customer {
     id: number;
@@ -43,13 +44,25 @@ export default function CustomerShow({
     customer,
     leads,
     duplicates,
+    notes,
 }: {
     customer: Customer;
     leads: Lead[];
     duplicates: Duplicate[];
+    notes: Note[];
 }) {
     const [editing, setEditing] = useState(false);
     const [merging, setMerging] = useState(false);
+
+    // The composer needs the same leads the history table shows, named the way
+    // a picker names them. Matches NoteService::label on the server.
+    const noteChoices: LeadChoice[] = leads.map((l) => ({
+        id: l.id,
+        label: l.campaign || l.source || 'Lead',
+        stage: l.stage?.name ?? null,
+        emoji: l.stage?.emoji ?? null,
+        created_at: l.created_at.slice(0, 10),
+    }));
 
     return (
         <ConsoleLayout
@@ -86,9 +99,12 @@ export default function CustomerShow({
                         </Row>
                     </dl>
 
+                    {/* The free-text field on the contact record itself, filled
+                        when the contact was created. Distinct from the dated
+                        notes below, which are a running conversation. */}
                     {customer.notes && (
                         <>
-                            <h2 className="eyebrow mt-6">Notes</h2>
+                            <h2 className="eyebrow mt-6">On the contact record</h2>
                             <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">{customer.notes}</p>
                         </>
                     )}
@@ -136,6 +152,25 @@ export default function CustomerShow({
                                 )}
                             </tbody>
                         </table>
+                    </div>
+                </section>
+
+                {/*
+                    Spans the grid: a note can be long, and reading it in a
+                    320px column is worse than reading it nowhere.
+                */}
+                <section className="rounded-xl border border-border bg-card p-5 lg:col-span-2">
+                    <h2 className="font-display text-lg font-bold">Notes</h2>
+                    <p className="mb-4 mt-0.5 text-sm text-muted-foreground">
+                        {noteChoices.length === 0
+                            ? 'This contact has no leads yet, so notes are saved against them.'
+                            : 'Say which lead a note is about, or leave it against the contact.'}
+                    </p>
+
+                    <NoteComposer customerId={customer.id} leads={noteChoices} />
+
+                    <div className="mt-5">
+                        <NoteList notes={notes} />
                     </div>
                 </section>
             </div>

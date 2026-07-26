@@ -41,6 +41,12 @@ class Customer extends Model
         return $this->hasMany(Call::class);
     }
 
+    /** Every note written about this person, whichever lead prompted it. */
+    public function notes(): HasMany
+    {
+        return $this->hasMany(Note::class);
+    }
+
     /** The organisation whose book this contact sits in. */
     public function team(): BelongsTo
     {

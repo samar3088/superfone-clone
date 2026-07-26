@@ -26,6 +26,8 @@ Each entry states:
 |---|---|---|---|
 | 01 | [Lead duplicate rules](01-lead-duplicate-rules.md) | When a repeat enquiry counts as a duplicate rather than fresh business | Yes — 6 points |
 | 02 | [Go-live plan](02-go-live-plan.md) | Everything that must happen before and during launch | Yes — client actions in §2 |
+| 03 | [Open questions](03-open-questions.md) | Everything the build is currently guessing at, ordered by cost of a late answer | Yes — the whole document |
+| 04 | [Restore points](04-restore-points.md) | How to put the project back the way it was, and what each restore point contains | No — reference |
 
 ## Keeping these current
 

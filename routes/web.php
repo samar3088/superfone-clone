@@ -7,6 +7,7 @@ use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\LeadController;
+use App\Http\Controllers\NoteController;
 use App\Http\Controllers\Settings\AppSettingsController;
 use App\Http\Controllers\Settings\CrmSettingsController;
 use App\Http\Controllers\Settings\IntegrationController;
@@ -78,6 +79,12 @@ Route::middleware('auth')->group(function () {
     Route::get('customers/{customer}', [CustomerController::class, 'show'])->name('customers.show');
     Route::patch('customers/{customer}', [CustomerController::class, 'update'])->name('customers.update');
     Route::post('customers/{customer}/merge', [CustomerController::class, 'merge'])->name('customers.merge');
+
+    // Notes — always against the contact, optionally against one of their leads
+    Route::get('customers/{customer}/notes', [NoteController::class, 'index'])->name('notes.index');
+    Route::post('customers/{customer}/notes', [NoteController::class, 'store'])->name('notes.store');
+    Route::patch('notes/{note}', [NoteController::class, 'update'])->name('notes.update');
+    Route::delete('notes/{note}', [NoteController::class, 'destroy'])->name('notes.destroy');
 
     // Team members
     /*

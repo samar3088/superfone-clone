@@ -83,6 +83,56 @@ Full detail in [01-lead-duplicate-rules.md](01-lead-duplicate-rules.md).
 | B4 | Returning after **Sale Closed / Not Interested / Cold** is a fresh opportunity | Should *Cold* count as still-open instead? |
 | B5 | Repeats are **labelled, not hidden or merged** | Does the client expect duplicates folded away automatically? |
 | B6 | **Field Priority Order** does nothing — screen is deliberately read-only | What is it meant to change? Field order on a lead? Columns in a list? Which fields are mandatory? |
+| B7 | A **member can do their own work but delete nothing at all** | See B7 below — is anything on the "cannot" list something a member should be able to do? |
+| B8 | A note with **several leads to choose from must say which one** | See B8 below — should we instead default to the newest lead and not ask? |
+
+### B7. What a team member can and cannot do
+
+Members sign in and work their own leads. The line drawn — and proven by tests,
+so it cannot drift — is **members delete nothing**.
+
+**A member can:**
+
+- open the Dashboard, Leads, To-Dos, Customers and their own profile
+- move their own lead through the stages
+- complete and reopen the to-dos assigned to them
+- add a contact, and import contacts
+- write notes, and edit their own
+- export the leads they can see
+
+**A member cannot:**
+
+- delete anything — a team member, tag, lead stage, integration, note, or the
+  stored Facebook token
+- **merge two contacts.** A merge archives the losing record and moves its leads
+  and calls away, so it is a deletion wearing a friendlier name — owner only
+- open Settings, the Activity log, or the Teams screen
+- touch a to-do assigned to somebody else
+- add or change team members, or change any setting
+
+> **Confirm:** is anything on the second list something a member should be able
+> to do day to day? Each is a one-line change, but each also removes a guardrail.
+
+### B8. Which lead a note belongs to
+
+A note is **always** filed under the contact. Whether it is *also* filed under
+one of their enquiries depends on how many they have:
+
+| Contact has | What happens |
+|---|---|
+| **No leads** | Saved against the contact, no question asked |
+| **One lead** | That lead is pre-selected; *"This contact (not a specific lead)"* stays available |
+| **Several leads** | A choice is required — nothing is saved until one is picked |
+
+The reasoning for the third row: a note filed against the wrong enquiry is read
+by the wrong person at the wrong moment, and nobody ever notices it moved. The
+prompt costs one click; the mistake costs a customer.
+
+Because every note also carries the contact, archiving a lead never loses a
+note — it simply reads as a note about the contact from then on.
+
+> **Confirm:** would the client rather we never asked, and always attached the
+> note to the most recent lead? Faster to write, and occasionally wrong.
 
 ## C. Facebook — client actions, blocking go-live
 
@@ -130,4 +180,14 @@ Full detail in [02-go-live-plan.md](02-go-live-plan.md) §2.
   ever pulled and no email is ever sent — and the app looks perfectly healthy
   throughout. Who owns the server?
 - **SMTP is not configured.** Mail currently writes to a log file.
-- The **To-Dos screen** was designed without a reference — worth showing the client.
+- The **To-Dos screen** now follows the client's reference: Fresh Leads / Follow
+  Ups / Reminders tabs, task-type chips, a usage-by-team summary and a card per
+  to-do with call and WhatsApp actions. The three tabs are the three things that
+  raise a to-do — a first enquiry, a repeat, and one added by hand — so a change
+  to the campaign rules never silently moves work between tabs. Worth confirming
+  those three names read the way the client expects.
+- **Two things are called notes.** The contact record has a single free-text
+  field, filled when the contact is created or imported; separately there is a
+  dated note trail (B8). The contact page labels the first *"On the contact
+  record"* to keep them apart. If the client only wants one, the field can be
+  folded into the trail.

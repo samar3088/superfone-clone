@@ -8,6 +8,7 @@ import { Button } from '@/components/ui-kit';
 import { useColumns } from '@/hooks/use-columns';
 import CreateContact, { ContactOptions } from './create-contact';
 import ImportContacts from './import-contacts';
+import NotesModal from './notes';
 import {
     DateRangeFilter,
     FilterForm,
@@ -27,6 +28,7 @@ interface Customer {
     business_name: string | null;
     additional_info: string | null;
     leads_count: number;
+    notes_count: number;
     last_activity_at: string | null;
     created_at: string;
     tags: { id: number; name: string; color: string; emoji: string | null }[];
@@ -54,11 +56,12 @@ const COLUMN_CHOICES: ColumnChoice[] = [
     { key: 'team', label: 'Team Name' },
     { key: 'business_name', label: 'Business Name' },
     { key: 'leads', label: 'Leads' },
+    { key: 'notes', label: 'Notes' },
     { key: 'created_at', label: 'Date created' },
     { key: 'last_activity_at', label: 'Last activity' },
 ];
 
-const DEFAULT_COLUMNS = ['name', 'additional_info', 'email', 'tags', 'stage', 'source', 'owner', 'leads'];
+const DEFAULT_COLUMNS = ['name', 'additional_info', 'email', 'tags', 'stage', 'source', 'owner', 'leads', 'notes'];
 
 /** Everything the Reset button clears. */
 const FILTER_KEYS = ['search', 'member', 'leads', 'date_from', 'date_to'];
@@ -79,6 +82,7 @@ export default function CustomersIndex({
     const [importing, setImporting] = useState(false);
     const [tableSettings, setTableSettings] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
+    const [notesFor, setNotesFor] = useState<Customer | null>(null);
 
     const [visibleColumns, setVisibleColumns] = useColumns('customers.columns', DEFAULT_COLUMNS);
 
@@ -209,6 +213,24 @@ export default function CustomersIndex({
             align: 'right',
             cell: (c) => <span className="tabular font-medium">{c.leads_count}</span>,
         },
+        notes: {
+            key: 'notes',
+            header: 'Notes',
+            cell: (c) => (
+                <button
+                    type="button"
+                    onClick={() => setNotesFor(c)}
+                    title={`Notes on ${c.name}`}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-border px-2 py-1 text-xs font-semibold transition hover:bg-muted"
+                >
+                    <svg viewBox="0 0 24 24" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                        <path d="M4 5a2 2 0 0 1 2-2h9l5 5v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z" />
+                        <path d="M14 3v6h6M8 13h8M8 17h5" />
+                    </svg>
+                    <span className="tabular">{c.notes_count || 'Add'}</span>
+                </button>
+            ),
+        },
         created_at: {
             key: 'created_at',
             header: 'Date created',
@@ -331,6 +353,8 @@ export default function CustomersIndex({
             )}
 
             {importing && <ImportContacts onClose={() => setImporting(false)} />}
+
+            {notesFor && <NotesModal customer={notesFor} onClose={() => setNotesFor(null)} />}
 
             {tableSettings && (
                 <TableSettings
