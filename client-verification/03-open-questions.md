@@ -87,6 +87,7 @@ Full detail in [01-lead-duplicate-rules.md](01-lead-duplicate-rules.md).
 | B8 | A note with **several leads to choose from must say which one** | See B8 below — should we instead default to the newest lead and not ask? |
 | B9 | **Reminders first, then Fresh Leads, then Follow Ups** | See B9 below — three points, including whether a completed first call should move a lead out of Fresh |
 | B10 | **An imported number already on file is matched, not skipped** | See B10 below — Superfone skips it; we attach the new details to the contact already there |
+| B11 | **Contacts hold first and last name; team members hold one full name** | See B11 below — should team members be split too? |
 
 ### B10. What the contact import does with a number already on file
 
@@ -128,6 +129,38 @@ memory, so the size of the range costs nothing — a cap would be a limitation
 copied for no reason.
 
 > **Confirm:** is the one-month cap something the client actually wants kept?
+
+### B11. How a name is stored
+
+A contact now holds **three** name fields, kept in step automatically:
+
+| Field | Read by |
+|---|---|
+| `name` | Every screen, export, email and search |
+| `first_name` | The import template's FIRST NAME |
+| `last_name` | The import template's LAST NAME |
+
+Before this, only the full name existed, and the split was invented at the
+moment it was needed — joined on import, guessed on download. That is why
+"Asha Devi Rao" could go in as *Asha* / *Devi Rao* and come back out as
+*Asha Devi* / *Rao*, with no way to correct it.
+
+Writing any side updates the others: give a whole name and it is split on the
+**last** space, so a middle name stays with the first; give both halves and the
+whole name is rebuilt from them. A one-word name keeps an empty last name
+rather than inventing a surname. **First name is required, last name is not.**
+
+Facebook lead forms send either `full_name` or `first_name` + `last_name`; when
+the form tells us where the split is, that is kept rather than re-derived.
+
+Everything else in the app — **team members, and the name copied onto a lead**
+— still holds a single full name. A team member is typed in once by an owner,
+and a lead's name is a snapshot of the contact at the moment they enquired.
+Neither is ever imported or exported against the two-column template, so
+splitting them would add a field nobody fills in.
+
+> **Confirm:** should **team members** be first name / last name as well? It is
+> a small change now and a larger one once real staff are loaded.
 
 ### B9. What the three To-Dos tabs hold
 

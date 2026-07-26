@@ -37,7 +37,8 @@ class CreateContactTest extends TestCase
     private function payload(array $overrides = []): array
     {
         return array_merge([
-            'name' => 'Asha Rao',
+            'first_name' => 'Asha',
+            'last_name' => 'Rao',
             'phones' => ['9876500001'],
             'emails' => [],
         ], $overrides);
@@ -109,7 +110,7 @@ class CreateContactTest extends TestCase
         $this->submit(['phones' => ['9876500001', '9876500002']]);
 
         // Someone re-enters them, this time leading with the alternate number.
-        $this->submit(['name' => 'Asha R', 'phones' => ['9876500002']])->assertSessionHasNoErrors();
+        $this->submit(['first_name' => 'Asha', 'last_name' => 'R', 'phones' => ['9876500002']])->assertSessionHasNoErrors();
 
         $this->assertSame(1, Customer::count(), 'The alternate number should have matched the existing contact.');
     }
@@ -143,7 +144,7 @@ class CreateContactTest extends TestCase
     public function test_one_number_cannot_belong_to_two_contacts(): void
     {
         $this->submit(['phones' => ['9876500001']]);
-        $this->submit(['name' => 'Someone Else', 'phones' => ['9876500001']]);
+        $this->submit(['first_name' => 'Someone', 'last_name' => 'Else', 'phones' => ['9876500001']]);
 
         $this->assertSame(1, Customer::count());
         $this->assertSame(1, CustomerChannel::where('value', '9876500001')->count());
@@ -164,7 +165,7 @@ class CreateContactTest extends TestCase
     public function test_merging_carries_the_numbers_across_so_they_keep_matching(): void
     {
         $this->submit(['phones' => ['9876500001']]);
-        $this->submit(['name' => 'Asha Duplicate', 'phones' => ['9876500009']]);
+        $this->submit(['first_name' => 'Asha', 'last_name' => 'Duplicate', 'phones' => ['9876500009']]);
 
         [$target, $duplicate] = Customer::orderBy('id')->get()->all();
 

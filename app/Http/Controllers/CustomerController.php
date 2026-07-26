@@ -225,7 +225,10 @@ class CustomerController extends Controller
     public function update(Request $request, Customer $customer): RedirectResponse
     {
         $customer->update($request->validate([
-            'name' => ['required', 'string', 'max:150'],
+            // Two fields, as everywhere else. The model rebuilds the full name
+            // from them, so `name` is never written directly here.
+            'first_name' => ['required', 'string', 'max:100'],
+            'last_name' => ['nullable', 'string', 'max:100'],
             'mobile' => ['required', 'string', 'regex:/^[6-9]\d{9}$/', Rule::unique('customers', 'mobile')->ignore($customer->id)->whereNull('deleted_at')],
             'email' => ['nullable', 'email:rfc', 'max:150', Rule::unique('customers', 'email')->ignore($customer->id)->whereNull('deleted_at')],
             'city' => ['nullable', 'string', 'max:100'],
@@ -301,7 +304,13 @@ class CustomerController extends Controller
                 'latestLead.assignee:id,name',
             ])
         )
-            ->select(['id', 'team_id', 'created_by', 'name', 'mobile', 'email', 'city',
+            /*
+             | The download reads this same query, and ContactColumns reads the
+             | name halves off the model — so leaving them out of the select
+             | would silently produce a file with a blank name on every row.
+             */
+            ->select(['id', 'team_id', 'created_by', 'name', 'first_name', 'last_name',
+                'mobile', 'email', 'city', 'website', 'house_no', 'address_1', 'address_2',
                 'business_name', 'additional_info', 'last_activity_at', 'created_at'])
             ->searchable(['name', 'mobile', 'email'])
             ->sortable(['name', 'created_at', 'last_activity_at'])

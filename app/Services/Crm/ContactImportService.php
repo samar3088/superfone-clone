@@ -2,6 +2,7 @@
 
 namespace App\Services\Crm;
 
+use App\Models\Customer;
 use App\Models\Lead;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
@@ -187,7 +188,8 @@ class ContactImportService
                      */
                     if ($existing && ($settings['update_existing'] ?? false)) {
                         $customer->fill(array_filter([
-                            'name' => $row['fields']['name'],
+                            'first_name' => $row['fields']['first_name'],
+                            'last_name' => $row['fields']['last_name'],
                             'business_name' => $row['fields']['business_name'] ?? null,
                             'city' => $row['fields']['city'] ?? null,
                             'website' => $row['fields']['website'] ?? null,
@@ -312,11 +314,17 @@ class ContactImportService
 
             $data = $this->readRow($row, $map);
 
-            // FIRST NAME + LAST NAME, or a single Name column from the older
-            // format. Either way a contact needs something to be called.
-            $name = trim(($data['name'] ?? '') !== ''
-                ? $data['name']
-                : trim(($data['first_name'] ?? '').' '.($data['last_name'] ?? '')));
+            /*
+             | FIRST NAME + LAST NAME, or a single Name column from the older
+             | format. Whichever the file carries is passed through as it stands
+             | and the model keeps the other side in step — so a two-column file
+             | is never re-split by guesswork on the way back out.
+             */
+            [$first, $last] = ($data['name'] ?? '') !== ''
+                ? Customer::splitName($data['name'])
+                : [$data['first_name'] ?? '', $data['last_name'] ?? null];
+
+            $name = trim(trim((string) $first).' '.trim((string) $last));
 
             if ($name === '') {
                 $errors[] = "Row {$line}: no name.";
@@ -343,6 +351,8 @@ class ContactImportService
                 'line' => $line,
                 'fields' => [
                     'name' => $name,
+                    'first_name' => trim((string) $first),
+                    'last_name' => filled($last) ? trim((string) $last) : null,
                     'phones' => $phones,
                     'emails' => array_values(array_filter([$data['email_1'] ?? null, $data['email_2'] ?? null])),
                     'business_name' => $data['business_name'] ?? null,

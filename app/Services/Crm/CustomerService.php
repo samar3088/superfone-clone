@@ -24,8 +24,16 @@ class CustomerService
      * wins (it is the stronger identifier here) and the collision is left for
      * an owner to resolve with a merge.
      */
-    public function resolve(string $mobile, ?string $email, string $name, ?string $city = null): Customer
-    {
+    public function resolve(
+        string $mobile,
+        ?string $email,
+        string $name,
+        ?string $city = null,
+        // Passed only when the source gave both halves — a Facebook form with
+        // separate first and last fields. Otherwise the model derives them.
+        ?string $firstName = null,
+        ?string $lastName = null,
+    ): Customer {
         /*
          | Searched across every number and address a customer holds, not just
          | the primary one. Someone who first enquired on one number and later
@@ -56,9 +64,12 @@ class CustomerService
         }
 
         try {
-            return DB::transaction(function () use ($name, $mobile, $email, $city) {
+            return DB::transaction(function () use ($name, $mobile, $email, $city, $firstName, $lastName) {
                 $customer = Customer::create([
                     'name' => $name,
+                    ...($firstName && $lastName
+                        ? ['first_name' => $firstName, 'last_name' => $lastName]
+                        : []),
                     'mobile' => $mobile,
                     'email' => $email,
                     'city' => $city,
@@ -236,7 +247,8 @@ class CustomerService
         $customer = DB::transaction(function () use ($data, $phones, $emails) {
             $customer = Customer::create([
                 ...collect($data)->only([
-                    'team_id', 'created_by', 'name', 'city', 'notes', 'website',
+                    'team_id', 'created_by', 'name', 'first_name', 'last_name',
+                    'city', 'notes', 'website',
                     'business_name', 'house_no', 'address_1', 'address_2', 'additional_info',
                 ])->all(),
                 // Falls back to the only organisation, so a contact is never

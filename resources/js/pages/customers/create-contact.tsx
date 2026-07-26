@@ -60,7 +60,8 @@ export default function CreateContact({
      */
     const form = useForm<{
         team_id: number | '';
-        name: string;
+        first_name: string;
+        last_name: string;
         phones: string[];
         emails: string[];
         website: string;
@@ -85,7 +86,8 @@ export default function CreateContact({
         // Defaults to the only organisation, so a contact is never orphaned
         // just because nobody touched the field.
         team_id: (options.teams[0]?.id ?? '') as number | '',
-        name: '',
+        first_name: '',
+        last_name: '',
         phones: [''],
         emails: [''],
         website: '',
@@ -139,16 +141,30 @@ export default function CreateContact({
                     </select>
                 </Field>
 
+                {/* Two fields, matching the import template — so a contact
+                    typed in by hand and one imported from a sheet hold their
+                    name the same way. */}
                 <div className="grid gap-4 sm:grid-cols-2">
-                    <Field label="Name" required error={form.errors.name}>
+                    <Field label="First name" required error={form.errors.first_name}>
                         <input
                             className={inputClass}
-                            placeholder="Enter full name"
-                            value={form.data.name}
-                            onChange={(e) => form.setData('name', e.target.value)}
+                            placeholder="Enter first name"
+                            value={form.data.first_name}
+                            onChange={(e) => form.setData('first_name', e.target.value)}
                         />
                     </Field>
 
+                    <Field label="Last name" error={form.errors.last_name}>
+                        <input
+                            className={inputClass}
+                            placeholder="Enter last name"
+                            value={form.data.last_name}
+                            onChange={(e) => form.setData('last_name', e.target.value)}
+                        />
+                    </Field>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
                     <Field label="Business name" error={form.errors.business_name}>
                         <input
                             className={inputClass}

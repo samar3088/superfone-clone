@@ -107,7 +107,8 @@ class MemberCapabilityTest extends TestCase
     {
         $this->actingAs($this->member)
             ->post('/customers', [
-                'name' => 'Walk In',
+                'first_name' => 'Walk',
+                'last_name' => 'In',
                 'phones' => ['9000000123'],
                 'emails' => [],
             ])

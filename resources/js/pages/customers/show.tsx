@@ -8,6 +8,8 @@ import { LeadChoice, Note, NoteComposer, NoteList } from './notes';
 interface Customer {
     id: number;
     name: string;
+    first_name: string | null;
+    last_name: string | null;
     mobile: string;
     email: string | null;
     city: string | null;
@@ -192,7 +194,8 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
 
 function EditForm({ customer, onClose }: { customer: Customer; onClose: () => void }) {
     const form = useForm({
-        name: customer.name,
+        first_name: customer.first_name ?? '',
+        last_name: customer.last_name ?? '',
         mobile: customer.mobile,
         email: customer.email ?? '',
         city: customer.city ?? '',
@@ -207,14 +210,25 @@ function EditForm({ customer, onClose }: { customer: Customer; onClose: () => vo
     return (
         <Modal open onClose={onClose} title="Edit customer">
             <form onSubmit={submit} className="space-y-4">
-                <Field label="Name" required error={form.errors.name}>
-                    <input
-                        className={inputClass}
-                        value={form.data.name}
-                        autoFocus
-                        onChange={(e) => form.setData('name', e.target.value)}
-                    />
-                </Field>
+                {/* Two fields here as well, so a contact edited by hand and
+                    one imported from a sheet hold their name the same way. */}
+                <div className="grid gap-4 sm:grid-cols-2">
+                    <Field label="First name" required error={form.errors.first_name}>
+                        <input
+                            className={inputClass}
+                            value={form.data.first_name}
+                            autoFocus
+                            onChange={(e) => form.setData('first_name', e.target.value)}
+                        />
+                    </Field>
+                    <Field label="Last name" error={form.errors.last_name}>
+                        <input
+                            className={inputClass}
+                            value={form.data.last_name}
+                            onChange={(e) => form.setData('last_name', e.target.value)}
+                        />
+                    </Field>
+                </div>
                 <Field label="Mobile" required error={form.errors.mobile}>
                     <input
                         className={`${inputClass} data`}

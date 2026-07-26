@@ -44,6 +44,8 @@ class LeadService
                 $payload['email'] ?? null,
                 $payload['name'],
                 $payload['city'] ?? null,
+                $payload['first_name'] ?? null,
+                $payload['last_name'] ?? null,
             );
 
             $lead = new Lead;

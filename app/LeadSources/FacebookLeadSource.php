@@ -335,7 +335,15 @@ class FacebookLeadSource
             return null;
         }
 
-        $name = trim($fields['full_name'] ?? trim(($fields['first_name'] ?? '').' '.($fields['last_name'] ?? '')));
+        /*
+         | Some forms send full_name, others first_name and last_name. Where the
+         | form already tells us the split, keep it — guessing it back later
+         | from the joined string is how "Asha Devi Rao" loses her middle name.
+         */
+        $first = trim((string) ($fields['first_name'] ?? ''));
+        $last = trim((string) ($fields['last_name'] ?? ''));
+
+        $name = trim((string) ($fields['full_name'] ?? '')) ?: trim("{$first} {$last}");
 
         $known = ['full_name', 'first_name', 'last_name', 'phone_number', 'phone',
             'mobile_number', 'email', 'city'];
@@ -343,6 +351,13 @@ class FacebookLeadSource
         return [
             'external_id' => (string) $row['id'],
             'name' => $name !== '' ? $name : 'Unknown',
+            /*
+             | Passed on only when the form gave both halves. One half is not a
+             | split, and half a split written over a whole name would lose the
+             | other half — so in that case the model derives it instead.
+             */
+            'first_name' => $first !== '' && $last !== '' ? $first : null,
+            'last_name' => $first !== '' && $last !== '' ? $last : null,
             'mobile' => $mobile,
             'email' => filter_var($fields['email'] ?? '', FILTER_VALIDATE_EMAIL) ?: null,
             'city' => $fields['city'] ?? null,

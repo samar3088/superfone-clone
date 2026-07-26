@@ -17,7 +17,13 @@ class StoreCustomerRequest extends FormRequest
     {
         return [
             'team_id' => ['nullable', 'integer', 'exists:teams,id'],
-            'name' => ['required', 'string', 'min:2', 'max:150'],
+            /*
+             | Two fields, matching the import template. Only the first is
+             | required: plenty of contacts are a single word — a business, a
+             | mononym — and demanding a surname would invent one.
+             */
+            'first_name' => ['required', 'string', 'min:2', 'max:100'],
+            'last_name' => ['nullable', 'string', 'max:100'],
 
             /*
              | Uniqueness is deliberately not checked here. A number that

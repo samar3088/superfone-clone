@@ -85,12 +85,14 @@ final class ContactColumns
     {
         return match ($key) {
             /*
-             | The book holds one name, the template wants two. Split on the
-             | last space so "Asha Rao" gives Asha / Rao and a three-part name
-             | keeps its middle with the first — the alternative loses it.
+             | Read, not guessed. Both halves are stored on the contact and kept
+             | in step with the full name, so a name that was imported as two
+             | columns comes back out as the same two columns — and one that was
+             | split wrongly can be corrected on the contact rather than being
+             | re-derived the same wrong way on every download.
              */
-            'first_name' => self::splitName($customer->name)[0],
-            'last_name' => self::splitName($customer->name)[1],
+            'first_name' => (string) ($customer->first_name ?? ''),
+            'last_name' => (string) ($customer->last_name ?? ''),
 
             'primary_phone' => (string) $customer->mobile,
             'secondary_phone' => self::extraChannel($customer, 'phone'),
@@ -117,17 +119,6 @@ final class ContactColumns
 
             default => '',
         };
-    }
-
-    /** @return array{0: string, 1: string} */
-    private static function splitName(?string $name): array
-    {
-        $name = trim((string) $name);
-        $cut = mb_strrpos($name, ' ');
-
-        return $cut === false
-            ? [$name, '']
-            : [mb_substr($name, 0, $cut), mb_substr($name, $cut + 1)];
     }
 
     /**
