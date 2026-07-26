@@ -78,9 +78,19 @@ the email. Mobile wins wherever the two disagree.
 *different* mobile, they are matched as the same customer. If they use the same mobile
 with a different email, likewise.
 
+**Updated 26 July 2026 — a contact now holds *several* numbers and addresses.** Matching
+searches every one of them, not just the primary pair. Someone who first enquired on one
+number and later rings from another is one customer, and the new number is added to their
+record so it matches next time too. Merging carries the numbers across; without that a
+merged-away number would stop matching and the next enquiry from it would open a third
+record. The existing customers were backfilled, so this covers history too.
+
 > **Confirm:** should a same-email-different-mobile match still count as the same
 > person? We assumed yes, with mobile preferred. The stricter alternative — require
 > *both* to match — would create more separate customer records.
+>
+> **Also confirm:** a contact accumulating many numbers over time is intended, and one
+> number can never belong to two contacts — the database refuses it outright.
 
 ### 2.5 Coming back after a won or lost sale is a **Fresh** lead
 
