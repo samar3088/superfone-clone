@@ -33,14 +33,35 @@ final class ContactColumns
         'additional_info' => 'ADDITIONAL INFO',
 
         // Read-only on the way out: the importer has no column for these.
-        'tags' => 'TAGS',
+        'created_at' => 'DATE CREATED',
         'lead_stage' => 'LEAD STAGE',
-        'lead_owner' => 'LEAD OWNER',
+        'tags' => 'TAGS',
+        'assigned_to' => 'ASSIGNED TO',
+        'source' => 'SOURCE',
+        'notes' => 'NOTES',
         'team' => 'TEAM NAME',
         'leads' => 'LEADS',
         'calls' => 'CALLS',
         'last_activity' => 'LAST ACTIVITY',
-        'created_at' => 'DATE CREATED',
+    ];
+
+    /**
+     * Columns that need a relation loaded to say anything.
+     *
+     * Loaded only when asked for. Pulling every note for every contact on a
+     * 12,500-row download nobody asked for is the difference between a file
+     * that streams and one that falls over.
+     *
+     * @var array<string, string>
+     */
+    public const EAGER = [
+        'secondary_phone' => 'channels',
+        'tags' => 'tags',
+        'notes' => 'noteEntries',
+        'team' => 'team',
+        'lead_stage' => 'latestLead.stage',
+        'assigned_to' => 'latestLead.assignee',
+        'source' => 'latestLead',
     ];
 
     /** Ticked when the dialog first opens. */
@@ -62,6 +83,19 @@ final class ContactColumns
         $known = array_values(array_intersect(array_keys(self::CHOICES), $asked));
 
         return $known ?: self::DEFAULTS;
+    }
+
+    /**
+     * The relations these columns need, and nothing else.
+     *
+     * @param  array<int, string>  $keys
+     * @return array<int, string>
+     */
+    public static function eagerFor(array $keys): array
+    {
+        return array_values(array_unique(
+            array_intersect_key(self::EAGER, array_flip($keys))
+        ));
     }
 
     /** @param array<int, string> $keys */
@@ -110,7 +144,20 @@ final class ContactColumns
                 ? $customer->tags->pluck('name')->implode(', ')
                 : '',
             'lead_stage' => (string) ($customer->latestLead?->stage?->name ?? ''),
-            'lead_owner' => (string) ($customer->latestLead?->assignee?->name ?? ''),
+            'assigned_to' => (string) ($customer->latestLead?->assignee?->name ?? ''),
+            'source' => (string) ($customer->latestLead?->source ?? ''),
+
+            /*
+             | The contact's own record note first, then the dated ones newest
+             | first, separated so one cell stays readable in a spreadsheet.
+             */
+            'notes' => collect([$customer->notes])
+                ->concat($customer->relationLoaded('noteEntries')
+                    ? $customer->noteEntries->pluck('body')
+                    : [])
+                ->filter()
+                ->implode(' | '),
+
             'team' => (string) ($customer->team?->name ?? ''),
             'leads' => (string) ($customer->leads_count ?? 0),
             'calls' => (string) ($customer->calls_count ?? 0),

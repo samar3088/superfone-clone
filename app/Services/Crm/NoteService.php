@@ -54,7 +54,7 @@ class NoteService
      */
     public function timeline(Customer $customer): array
     {
-        return $customer->notes()
+        return $customer->noteEntries()
             ->with(['author:id,name', 'lead:id,campaign,source'])
             ->latest('id')
             ->get()

@@ -3,6 +3,10 @@
 namespace Tests\Feature\Crm;
 
 use App\Models\Customer;
+use App\Models\Lead;
+use App\Models\LeadStage;
+use App\Models\Tag;
+use App\Models\Team;
 use App\Models\User;
 use App\Services\Crm\ContactImportService;
 use App\Support\ContactColumns;
@@ -177,6 +181,114 @@ class DownloadContactsTest extends TestCase
 
         $this->assertStringContainsString('Asha', $csv);
         $this->assertStringNotContainsString('Ravi', $csv);
+    }
+
+    public function test_the_download_and_the_list_agree_on_every_filter(): void
+    {
+        $tag = Tag::firstOrCreate(['name' => 'Imported'], ['color' => '#000000']);
+        $stage = LeadStage::where('type', 'INITIAL')->firstOrFail();
+        $member = User::factory()->member()->create();
+        $team = Team::firstOrCreate(['name' => 'Sales'], ['status' => 'active']);
+
+        $keep = $this->asha();
+        $keep->tags()->attach($tag);
+        $keep->update(['team_id' => $team->id]);
+
+        Lead::create([
+            'customer_id' => $keep->id, 'name' => $keep->name, 'mobile' => $keep->mobile,
+            'source' => 'facebook', 'lead_stage_id' => $stage->id, 'assigned_to' => $member->id,
+        ]);
+
+        // Somebody the filters should exclude every time.
+        Customer::create(['name' => 'Ravi Kumar', 'mobile' => '9812345678', 'last_activity_at' => now()]);
+
+        /*
+         | The guarantee worth holding: narrow the list one way and the download
+         | the same way, and they describe the same people. Both read the same
+         | request keys through the same query builder, and this proves it for
+         | each filter rather than trusting that they still do.
+         */
+        $cases = [
+            'team' => (string) $team->id,
+            'member' => (string) $member->id,
+            'tags' => (string) $tag->id,
+            'stage' => (string) $stage->id,
+            'search' => 'Asha',
+        ];
+
+        foreach ($cases as $key => $value) {
+            $onScreen = collect(
+                $this->actingAs($this->owner)
+                    ->get('/customers?'.http_build_query([$key => $value]))
+                    ->viewData('page')['props']['customers']['data']
+            )->pluck('name')->sort()->values()->all();
+
+            $csv = $this->download([$key => $value, 'columns' => 'first_name']);
+
+            $this->assertSame(['Asha Rao'], $onScreen, "The list disagrees on '{$key}'.");
+
+            foreach ($onScreen as $name) {
+                $this->assertStringContainsString($name, $csv, "The download is missing '{$name}' when filtering by '{$key}'.");
+            }
+
+            $this->assertStringNotContainsString('Ravi', $csv, "The download ignored '{$key}'.");
+        }
+    }
+
+    public function test_a_download_carries_no_cap_on_the_date_range(): void
+    {
+        $this->asha();
+
+        // Deliberately wider than a month. Exports stream row by row, so the
+        // size of the window costs nothing and there is no limit to hit.
+        $csv = $this->download([
+            'date_from' => '2020-01-01',
+            'date_to' => '2030-12-31',
+            'columns' => 'first_name',
+        ]);
+
+        $this->assertStringContainsString('Asha', $csv);
+    }
+
+    public function test_every_column_the_client_asked_for_is_offered(): void
+    {
+        $expected = [
+            'FIRST NAME', 'LAST NAME', 'PRIMARY PHONE', 'SECONDARY PHONE', 'BUSINESS NAME',
+            'CITY', 'ADDRESS', 'EMAIL', 'WEBSITE URL', 'ADDITIONAL INFO',
+            'DATE CREATED', 'LEAD STAGE', 'TAGS', 'ASSIGNED TO', 'SOURCE', 'NOTES',
+        ];
+
+        $offered = array_values(ContactColumns::CHOICES);
+
+        foreach ($expected as $heading) {
+            $this->assertContains($heading, $offered, "The download cannot produce '{$heading}'.");
+        }
+    }
+
+    public function test_the_lead_and_note_columns_actually_carry_their_values(): void
+    {
+        $customer = $this->asha();
+        $customer->tags()->attach(Tag::firstOrCreate(['name' => 'VIP'], ['color' => '#7c3aed']));
+        $customer->noteEntries()->create([
+            'user_id' => $this->owner->id, 'body' => 'Prefers evenings.',
+        ]);
+
+        Lead::create([
+            'customer_id' => $customer->id, 'name' => $customer->name, 'mobile' => $customer->mobile,
+            'source' => 'facebook',
+            'lead_stage_id' => LeadStage::where('type', 'INITIAL')->value('id'),
+            'assigned_to' => User::factory()->member()->create(['name' => 'Aarav'])->id,
+        ]);
+
+        $csv = $this->download(['columns' => 'lead_stage,tags,assigned_to,source,notes']);
+
+        // Each of these needs a relation loaded; a missing eager load shows up
+        // here as a silently empty column rather than an error.
+        $this->assertStringContainsString('New Inquiry', $csv);
+        $this->assertStringContainsString('VIP', $csv);
+        $this->assertStringContainsString('Aarav', $csv);
+        $this->assertStringContainsString('facebook', $csv);
+        $this->assertStringContainsString('Prefers evenings.', $csv);
     }
 
     public function test_the_file_is_never_served_from_a_cache(): void

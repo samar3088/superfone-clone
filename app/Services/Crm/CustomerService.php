@@ -175,7 +175,7 @@ class CustomerService
                 // Notes travel too. Left behind they would follow the tombstone
                 // out of every list and be unreachable — the one thing on a
                 // contact that only a person can have written.
-                $duplicate->notes()->update(['customer_id' => $target->id]);
+                $duplicate->noteEntries()->update(['customer_id' => $target->id]);
 
                 /*
                  | Their numbers and addresses come too, demoted from primary —
@@ -373,7 +373,7 @@ class CustomerService
 
         return Customer::active()
             ->whereIn('name_key', $keys)
-            ->withCount(['leads', 'calls', 'notes'])
+            ->withCount(['leads', 'calls', 'noteEntries as notes_count'])
             ->orderBy('name_key')
             ->orderBy('id')
             ->get(['id', 'name_key', 'name', 'mobile', 'email', 'city',

@@ -384,6 +384,8 @@ export default function CustomersIndex({
             {downloading && (
                 <DownloadContacts
                     filters={filters}
+                    options={options}
+                    members={members}
                     columns={options.downloadColumns}
                     defaults={options.downloadDefaults}
                     onClose={() => setDownloading(false)}

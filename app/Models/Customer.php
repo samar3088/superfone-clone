@@ -175,8 +175,15 @@ class Customer extends Model
         return $this->hasMany(Call::class);
     }
 
-    /** Every note written about this person, whichever lead prompted it. */
-    public function notes(): HasMany
+    /**
+     * Every dated note written about this person, whichever lead prompted it.
+     *
+     * Not called `notes`, because the contacts table already has a `notes`
+     * column — the free-text field on the record itself. Eloquent resolves an
+     * attribute before a relation, so a relation of that name would be
+     * shadowed by the column and silently return a string.
+     */
+    public function noteEntries(): HasMany
     {
         return $this->hasMany(Note::class);
     }

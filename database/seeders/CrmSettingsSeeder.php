@@ -12,6 +12,13 @@ class CrmSettingsSeeder extends Seeder
 {
     public function run(): void
     {
+        /*
+         | Every tag the client already uses, taken from their own list.
+         |
+         | "missed call" and "miss call" are both theirs and both kept — one is
+         | almost certainly a typo, but deleting a tag deletes it from whatever
+         | it is attached to, so that is their call to make, not ours.
+         */
         $tags = [
             ['VIP', '#7c3aed', '👑'],
             ['New customer', '#2563eb', null],
@@ -19,8 +26,19 @@ class CrmSettingsSeeder extends Seeder
             ['Interested', '#0f7a52', '😍'],
             ['No response', '#6b7280', '🚫'],
             ['Hot lead', '#c2410c', '🔥'],
-            ['Issue', '#be3a2b', '🐞'],
+            ['Issue', '#be3a2b', '🚨'],
             ['Follow-up', '#a855f7', null],
+            ['Invalid', '#dc2626', null],
+            ['Already converted', '#c026d3', null],
+            ['Matrimony Call', '#7c3aed', null],
+            ['Converted', '#6d28d9', '✔'],
+            ['COLD', '#0891b2', '❄'],
+            ['Demo', '#6366f1', null],
+            ['my operator', '#db2777', null],
+            ['renewal', '#ca8a04', null],
+            ['Busy', '#be185d', null],
+            ['missed call', '#6b7280', null],
+            ['miss call', '#e11d48', null],
         ];
         foreach ($tags as [$name, $color, $emoji]) {
             Tag::updateOrCreate(['name' => $name], ['color' => $color, 'emoji' => $emoji]);

@@ -215,7 +215,7 @@ class CustomerController extends Controller
     public function show(Customer $customer, NoteService $notes): Response
     {
         return Inertia::render('customers/show', [
-            'customer' => $customer->loadCount(['leads', 'calls', 'notes']),
+            'customer' => $customer->loadCount(['leads', 'calls', 'noteEntries as notes_count']),
             'leads' => $this->customers->leadHistory($customer),
             'duplicates' => $this->customers->findPotentialDuplicates($customer),
             'notes' => $notes->timeline($customer),
@@ -288,13 +288,19 @@ class CustomerController extends Controller
         );
 
         return $this->exports->streamCsv(
-            // Same filtered query as the screen — previously the export ignored
-            // every filter and always dumped the full customer list.
+            /*
+             | The same filtered query the screen builds, from the same request
+             | keys — which is what makes a download of a filtered list contain
+             | exactly the rows that list was showing.
+             |
+             | Relations are loaded only for the columns actually asked for.
+             | Pulling every note for every contact on a download that does not
+             | include notes is the difference between a file that streams and
+             | one that falls over.
+             */
             $this->table($request)->query($request)
                 ->withCount('calls')
-                // Second numbers live in customer_channels, so without this the
-                // SECONDARY PHONE column would silently come out blank.
-                ->with('channels:id,customer_id,type,value,is_primary'),
+                ->with(ContactColumns::eagerFor($columns)),
             ContactColumns::headings($columns),
             fn (Customer $c) => ContactColumns::row($c, $columns),
             'contacts-'.now()->format('Y-m-d-Hi').'.csv',
@@ -304,7 +310,7 @@ class CustomerController extends Controller
     private function table(Request $request): DataTableService
     {
         return DataTableService::for(
-            Customer::query()->active()->withCount(['leads', 'notes'])->with([
+            Customer::query()->active()->withCount(['leads', 'noteEntries as notes_count'])->with([
                 'tags:id,name,color,emoji',
                 'team:id,name',
                 'creator:id,name',
