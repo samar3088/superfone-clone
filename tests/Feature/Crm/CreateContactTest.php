@@ -7,9 +7,11 @@ use App\Models\CustomerChannel;
 use App\Models\Lead;
 use App\Models\LeadStage;
 use App\Models\Task;
+use App\Models\Team;
 use App\Models\User;
 use App\Services\Crm\CustomerService;
 use Database\Seeders\CrmSettingsSeeder;
+use Database\Seeders\TeamSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -174,6 +176,38 @@ class CreateContactTest extends TestCase
 
         $this->assertNotNull($found);
         $this->assertSame($target->id, $found->id);
+    }
+
+    /* ── Organisation ─────────────────────────────────── */
+
+    public function test_a_contact_joins_the_only_organisation_without_being_told_to(): void
+    {
+        $this->seed(TeamSeeder::class);
+
+        $this->submit()->assertSessionHasNoErrors();
+
+        $this->assertSame(Team::sole()->id, Customer::sole()->team_id);
+    }
+
+    public function test_a_contact_can_be_filed_under_a_chosen_organisation(): void
+    {
+        $this->seed(TeamSeeder::class);
+        $other = Team::create(['name' => 'Second Org', 'status' => 'active']);
+
+        $this->submit(['team_id' => $other->id])->assertSessionHasNoErrors();
+
+        $this->assertSame($other->id, Customer::sole()->team_id);
+    }
+
+    public function test_the_form_is_given_the_organisations_to_choose_from(): void
+    {
+        $this->seed(TeamSeeder::class);
+
+        $props = $this->actingAs($this->owner)->get('/customers')->viewData('page')['props'];
+
+        $this->assertNotEmpty($props['options']['teams']);
+        // The number is shown beside the name once one is provisioned.
+        $this->assertArrayHasKey('virtual_number', $props['options']['teams'][0]);
     }
 
     /* ── Lead and task ────────────────────────────────── */

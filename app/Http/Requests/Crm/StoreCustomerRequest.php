@@ -16,6 +16,7 @@ class StoreCustomerRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'team_id' => ['nullable', 'integer', 'exists:teams,id'],
             'name' => ['required', 'string', 'min:2', 'max:150'],
 
             /*

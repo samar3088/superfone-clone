@@ -8,6 +8,7 @@ use App\Models\Customer;
 use App\Models\Lead;
 use App\Models\LeadGroup;
 use App\Models\LeadStage;
+use App\Models\Team;
 use App\Models\User;
 use App\Services\Crm\CustomerService;
 use App\Services\Crm\TaskService;
@@ -42,6 +43,9 @@ class CustomerController extends Controller
             'members' => User::role([Roles::OWNER, Roles::MEMBER])->orderBy('name')->get(['id', 'name']),
             // Options for the Create Contact form.
             'options' => [
+                // Shown as "number, NAME" the way the organisation is
+                // identified elsewhere; the number appears once one exists.
+                'teams' => Team::orderBy('id')->get(['id', 'name', 'virtual_number']),
                 'sourceTypes' => LeadProviders::sourceTypes(),
                 'todoTypes' => LeadProviders::todoTypes(),
                 'stages' => LeadStage::where('is_active', true)->orderBy('sequence')

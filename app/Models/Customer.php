@@ -15,6 +15,7 @@ class Customer extends Model
     use LogsActivity, SoftDeletes;
 
     protected $fillable = [
+        'team_id',
         'name', 'mobile', 'email', 'city', 'notes', 'last_activity_at',
         'website', 'business_name', 'house_no', 'address_1', 'address_2',
         'additional_info', 'merged_into_id', 'merged_at',
@@ -36,6 +37,12 @@ class Customer extends Model
     public function calls(): HasMany
     {
         return $this->hasMany(Call::class);
+    }
+
+    /** The organisation whose book this contact sits in. */
+    public function team(): BelongsTo
+    {
+        return $this->belongsTo(Team::class);
     }
 
     /** Every phone number and email address this customer can be reached on. */

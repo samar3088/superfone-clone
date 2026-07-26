@@ -5,6 +5,7 @@ namespace App\Services\Crm;
 use App\Models\Customer;
 use App\Models\CustomerChannel;
 use App\Models\Lead;
+use App\Models\Team;
 use Illuminate\Contracts\Database\Eloquent\Builder;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
@@ -235,9 +236,12 @@ class CustomerService
         $customer = DB::transaction(function () use ($data, $phones, $emails) {
             $customer = Customer::create([
                 ...collect($data)->only([
-                    'name', 'city', 'notes', 'website', 'business_name',
+                    'team_id', 'name', 'city', 'notes', 'website', 'business_name',
                     'house_no', 'address_1', 'address_2', 'additional_info',
                 ])->all(),
+                // Falls back to the only organisation, so a contact is never
+                // orphaned just because the form did not offer a choice.
+                'team_id' => $data['team_id'] ?? Team::query()->orderBy('id')->value('id'),
                 'mobile' => $phones[0],
                 'email' => $emails[0] ?? null,
                 'last_activity_at' => now(),

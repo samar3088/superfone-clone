@@ -9,11 +9,23 @@ interface Named {
     emoji?: string | null;
 }
 
+interface TeamOption {
+    id: number;
+    name: string;
+    virtual_number: string | null;
+}
+
 export interface ContactOptions {
+    teams: TeamOption[];
     sourceTypes: string[];
     todoTypes: string[];
     stages: Named[];
     groups: Named[];
+}
+
+/** "+919403890373, VARIETY VINTAGE" — the number only once one exists. */
+function orgLabel(team: TeamOption): string {
+    return team.virtual_number ? `${team.virtual_number}, ${team.name}` : team.name;
 }
 
 /**
@@ -42,6 +54,7 @@ export default function CreateContact({
      | be set true.
      */
     const form = useForm<{
+        team_id: number | '';
         name: string;
         phones: string[];
         emails: string[];
@@ -64,6 +77,9 @@ export default function CreateContact({
         task_type: string;
         task_due_at: string;
     }>({
+        // Defaults to the only organisation, so a contact is never orphaned
+        // just because nobody touched the field.
+        team_id: (options.teams[0]?.id ?? '') as number | '',
         name: '',
         phones: [''],
         emails: [''],
@@ -106,6 +122,18 @@ export default function CreateContact({
     return (
         <Modal open onClose={onClose} title="Create Contact" wide>
             <form onSubmit={submit} className="space-y-6">
+                <Field label="Organization" error={form.errors.team_id}>
+                    <select
+                        className={inputClass}
+                        value={form.data.team_id}
+                        onChange={(e) => form.setData('team_id', (Number(e.target.value) || '') as number | '')}
+                    >
+                        {options.teams.map((t) => (
+                            <option key={t.id} value={t.id}>{orgLabel(t)}</option>
+                        ))}
+                    </select>
+                </Field>
+
                 <div className="grid gap-4 sm:grid-cols-2">
                     <Field label="Name" required error={form.errors.name}>
                         <input
@@ -185,8 +213,13 @@ export default function CreateContact({
                     </Field>
                 </Section>
 
-                <div className="grid gap-6 sm:grid-cols-2">
-                    <Section title="Lead tracking">
+                {/*
+                    Full width rather than a narrow column, so related pairs sit
+                    side by side — source with its type, lead group with the
+                    campaign it came from.
+                */}
+                <Section title="Lead tracking">
+                    <div className="grid gap-4 sm:grid-cols-2">
                         <Field label="Source" error={form.errors.source}>
                             <input className={inputClass} placeholder="Enter source"
                                 value={form.data.source}
@@ -199,13 +232,6 @@ export default function CreateContact({
                                 <option value="">Select source type</option>
                                 {options.sourceTypes.map((t) => <option key={t} value={t}>{t}</option>)}
                             </select>
-                        </Field>
-
-                        <Field label="Deal value" error={form.errors.deal_value}>
-                            <input type="number" min={0} step="0.01" className={inputClass}
-                                placeholder="Enter deal value"
-                                value={form.data.deal_value}
-                                onChange={(e) => form.setData('deal_value', e.target.value)} />
                         </Field>
 
                         <Field label="Lead group" error={form.errors.lead_group_id}>
@@ -221,16 +247,23 @@ export default function CreateContact({
                                 value={form.data.campaign}
                                 onChange={(e) => form.setData('campaign', e.target.value)} />
                         </Field>
-                    </Section>
 
-                    <Section title="Additional info">
-                        <Field label="Additional info" error={form.errors.additional_info}>
-                            <textarea rows={4} className={inputClass} placeholder="Enter additional info"
-                                value={form.data.additional_info}
-                                onChange={(e) => form.setData('additional_info', e.target.value)} />
+                        <Field label="Deal value" error={form.errors.deal_value}>
+                            <input type="number" min={0} step="0.01" className={inputClass}
+                                placeholder="Enter deal value"
+                                value={form.data.deal_value}
+                                onChange={(e) => form.setData('deal_value', e.target.value)} />
                         </Field>
-                    </Section>
-                </div>
+                    </div>
+                </Section>
+
+                <Section title="Additional info">
+                    <Field label="Additional info" error={form.errors.additional_info}>
+                        <textarea rows={3} className={inputClass} placeholder="Enter additional info"
+                            value={form.data.additional_info}
+                            onChange={(e) => form.setData('additional_info', e.target.value)} />
+                    </Field>
+                </Section>
 
                 <Section title="Assignment">
                     <div className="grid gap-4 sm:grid-cols-2">
