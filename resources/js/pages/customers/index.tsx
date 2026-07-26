@@ -1,6 +1,7 @@
 import { Head, Link } from '@inertiajs/react';
 import { useState } from 'react';
 
+import { AdvancedFilters, FilterGroup } from '@/components/advanced-filters';
 import { Column, DataTable, Paginated } from '@/components/data-table';
 import { Button } from '@/components/ui-kit';
 import CreateContact, { ContactOptions } from './create-contact';
@@ -39,6 +40,57 @@ export default function CustomersIndex({
     options: ContactOptions;
 }) {
     const [creating, setCreating] = useState(false);
+    const [moreFilters, setMoreFilters] = useState(false);
+
+    /*
+     | Assigned to and the search box stay in the always-visible row, because
+     | they are the two people reach for constantly. The rest live behind
+     | "Add more filters" rather than growing the row until it scrolls.
+     */
+    const filterGroups: FilterGroup[] = [
+        {
+            name: 'team',
+            label: 'Team name',
+            options: options.teams.map((t) => ({ value: String(t.id), label: t.name })),
+        },
+        {
+            name: 'tags',
+            label: 'Tags',
+            options: options.tags.map((t) => ({
+                value: String(t.id),
+                label: t.name,
+                swatch: t.color,
+                emoji: t.emoji,
+            })),
+        },
+        {
+            name: 'stage',
+            label: 'Lead stages',
+            options: options.stages.map((s) => ({
+                value: String(s.id),
+                label: s.name,
+                emoji: s.emoji,
+            })),
+        },
+        {
+            name: 'group',
+            label: 'Lead groups',
+            options: options.groups.map((g) => ({ value: String(g.id), label: g.name })),
+        },
+        {
+            name: 'creator',
+            label: 'Created by',
+            options: options.creators.map((c) => ({ value: String(c.id), label: c.name })),
+        },
+        { name: 'created', label: 'Created date', kind: 'dates', fromName: 'date_from', toName: 'date_to' },
+    ];
+
+    // Shown on the button so the count survives a page load.
+    const advancedCount = filterGroups.filter((g) =>
+        g.kind === 'dates'
+            ? filters[g.fromName!] || filters[g.toName!]
+            : filters[g.name],
+    ).length;
 
     const columns: Column<Customer>[] = [
         {
@@ -116,10 +168,30 @@ export default function CustomersIndex({
                             ]}
                         />
 
-                        <DateRangeFilter />
+                        <button
+                            type="button"
+                            onClick={() => setMoreFilters(true)}
+                            className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-dashed border-input px-3 text-sm font-medium transition hover:bg-muted"
+                        >
+                            ＋ Add more filters
+                            {advancedCount > 0 && (
+                                <span className="tabular rounded-full bg-primary px-1.5 text-xs font-bold text-primary-foreground">
+                                    {advancedCount}
+                                </span>
+                            )}
+                        </button>
                     </FilterForm>
                 }
             />
+
+            {moreFilters && (
+                <AdvancedFilters
+                    url="/customers"
+                    filters={filters}
+                    groups={filterGroups}
+                    onClose={() => setMoreFilters(false)}
+                />
+            )}
 
             {creating && (
                 <CreateContact

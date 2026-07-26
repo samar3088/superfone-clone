@@ -25,6 +25,17 @@ class CustomerFilterRequest extends FormRequest
                 }
             }],
             'leads' => ['nullable', 'in:with,without'],
+
+            // Comma-joined lists from the advanced filter panel.
+            ...collect(['team', 'tags', 'stage', 'group', 'creator'])
+                ->mapWithKeys(fn (string $key) => [$key => [
+                    'nullable', 'string', 'max:200',
+                    function (string $a, mixed $v, Closure $fail) {
+                        if (! FilterList::isValid($v)) {
+                            $fail('That filter value is not valid.');
+                        }
+                    },
+                ]])->all(),
             'date_from' => ['nullable', 'date_format:Y-m-d'],
             'date_to' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:date_from'],
             'sort' => ['nullable', 'string', 'max:40'],

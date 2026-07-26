@@ -236,8 +236,8 @@ class CustomerService
         $customer = DB::transaction(function () use ($data, $phones, $emails) {
             $customer = Customer::create([
                 ...collect($data)->only([
-                    'team_id', 'name', 'city', 'notes', 'website', 'business_name',
-                    'house_no', 'address_1', 'address_2', 'additional_info',
+                    'team_id', 'created_by', 'name', 'city', 'notes', 'website',
+                    'business_name', 'house_no', 'address_1', 'address_2', 'additional_info',
                 ])->all(),
                 // Falls back to the only organisation, so a contact is never
                 // orphaned just because the form did not offer a choice.

@@ -17,6 +17,8 @@ interface TeamOption {
 
 export interface ContactOptions {
     teams: TeamOption[];
+    tags: { id: number; name: string; color: string; emoji: string | null }[];
+    creators: { id: number; name: string }[];
     sourceTypes: string[];
     todoTypes: string[];
     stages: Named[];

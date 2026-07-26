@@ -5,6 +5,7 @@ namespace Tests\Feature\Crm;
 use App\Models\Customer;
 use App\Models\Lead;
 use App\Models\LeadStage;
+use App\Models\Tag;
 use App\Models\User;
 use Database\Seeders\CrmSettingsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -345,6 +346,60 @@ class TableFilterTest extends TestCase
 
         $this->assertSame((string) $this->alice->id, (string) $props['filters']['member']);
         $this->assertSame('2026-01-01', $props['filters']['date_from']);
+    }
+
+    /* ── Customers: the advanced filter panel ─────────── */
+
+    public function test_customers_can_be_filtered_by_tag(): void
+    {
+        $tag = Tag::create(['name' => 'VIP', 'color' => '#7c3aed']);
+        $tagged = Customer::whereNotNull('id')->first();
+        $tagged->tags()->attach($tag);
+
+        $response = $this->actingAs($this->owner)->get('/customers?tags='.$tag->id);
+        $names = collect($response->viewData('page')['props']['customers']['data'])->pluck('name');
+
+        $this->assertSame([$tagged->name], $names->all());
+    }
+
+    public function test_customers_can_be_filtered_by_the_stage_of_their_leads(): void
+    {
+        $response = $this->actingAs($this->owner)->get('/customers?stage='.$this->won->id);
+        $names = collect($response->viewData('page')['props']['customers']['data'])->pluck('name');
+
+        // Only the customer behind the won lead.
+        $this->assertSame(['New Alice Lead'], $names->all());
+    }
+
+    public function test_customers_can_be_filtered_by_who_added_them(): void
+    {
+        $mine = Customer::create([
+            'name' => 'Typed In By Hand',
+            'mobile' => '9000000077',
+            'created_by' => $this->owner->id,
+            'last_activity_at' => now(),
+        ]);
+
+        $response = $this->actingAs($this->owner)->get('/customers?creator='.$this->owner->id);
+        $names = collect($response->viewData('page')['props']['customers']['data'])->pluck('name');
+
+        $this->assertSame([$mine->name], $names->all());
+    }
+
+    public function test_the_panel_is_given_every_list_it_needs(): void
+    {
+        $props = $this->actingAs($this->owner)->get('/customers')->viewData('page')['props'];
+
+        foreach (['teams', 'tags', 'creators', 'stages', 'groups'] as $key) {
+            $this->assertArrayHasKey($key, $props['options'], "The panel needs {$key}.");
+        }
+    }
+
+    public function test_a_nonsense_advanced_filter_is_rejected(): void
+    {
+        $this->actingAs($this->owner)
+            ->get('/customers?tags=not-a-number')
+            ->assertSessionHasErrors('tags');
     }
 
     public function test_customers_without_leads_can_be_isolated(): void

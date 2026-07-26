@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Activitylog\LogOptions;
@@ -15,7 +16,7 @@ class Customer extends Model
     use LogsActivity, SoftDeletes;
 
     protected $fillable = [
-        'team_id',
+        'team_id', 'created_by',
         'name', 'mobile', 'email', 'city', 'notes', 'last_activity_at',
         'website', 'business_name', 'house_no', 'address_1', 'address_2',
         'additional_info', 'merged_into_id', 'merged_at',
@@ -43,6 +44,18 @@ class Customer extends Model
     public function team(): BelongsTo
     {
         return $this->belongsTo(Team::class);
+    }
+
+    /** Whoever typed this contact in; null for anyone the sync brought in. */
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /** Labels on the person, as against the campaign that found them. */
+    public function tags(): BelongsToMany
+    {
+        return $this->belongsToMany(Tag::class, 'customer_tag');
     }
 
     /** Every phone number and email address this customer can be reached on. */

@@ -8,6 +8,7 @@ use App\Models\Customer;
 use App\Models\Lead;
 use App\Models\LeadGroup;
 use App\Models\LeadStage;
+use App\Models\Tag;
 use App\Models\Team;
 use App\Models\User;
 use App\Services\Crm\CustomerService;
@@ -33,7 +34,10 @@ class CustomerController extends Controller
     ) {}
 
     /** Filter keys the screen owns; the export reads the same set. */
-    private const FILTER_KEYS = ['search', 'member', 'leads', 'date_from', 'date_to'];
+    private const FILTER_KEYS = [
+        'search', 'member', 'leads', 'date_from', 'date_to',
+        'team', 'tags', 'stage', 'group', 'creator',
+    ];
 
     public function index(CustomerFilterRequest $request): Response
     {
@@ -46,6 +50,13 @@ class CustomerController extends Controller
                 // Shown as "number, NAME" the way the organisation is
                 // identified elsewhere; the number appears once one exists.
                 'teams' => Team::orderBy('id')->get(['id', 'name', 'virtual_number']),
+                'tags' => Tag::where('is_hidden', false)->orderBy('name')
+                    ->get(['id', 'name', 'color', 'emoji']),
+                // Only people who have actually added a contact — a list of
+                // everyone would mostly be names that can never match.
+                'creators' => User::whereIn('id', Customer::whereNotNull('created_by')
+                    ->distinct()->pluck('created_by'))
+                    ->orderBy('name')->get(['id', 'name']),
                 'sourceTypes' => LeadProviders::sourceTypes(),
                 'todoTypes' => LeadProviders::todoTypes(),
                 'stages' => LeadStage::where('is_active', true)->orderBy('sequence')
@@ -66,7 +77,9 @@ class CustomerController extends Controller
     {
         $data = $request->validated();
 
-        ['customer' => $customer, 'existing' => $existing] = $this->customers->createManual($data);
+        ['customer' => $customer, 'existing' => $existing] = $this->customers->createManual(
+            [...$data, 'created_by' => $request->user()->id],
+        );
 
         $lead = null;
 
@@ -177,6 +190,24 @@ class CustomerController extends Controller
             ->filter('leads', fn (Builder $q, $v) => $v === 'with'
                 ? $q->has('leads')
                 : $q->doesntHave('leads'))
+
+            ->filter('team', fn (Builder $q, $v) => $q->whereIn('team_id', FilterList::ids($v)))
+            ->filter('creator', fn (Builder $q, $v) => $q->whereIn('created_by', FilterList::ids($v)))
+            ->filter('tags', fn (Builder $q, $v) => $q->whereHas(
+                'tags', fn (Builder $t) => $t->whereIn('tags.id', FilterList::ids($v))
+            ))
+
+            /*
+             | Stage and group live on the lead, not the contact. A contact
+             | matches if any of their leads does — which is what someone means
+             | by "show me contacts at Quotation Sent".
+             */
+            ->filter('stage', fn (Builder $q, $v) => $q->whereHas(
+                'leads', fn (Builder $l) => $l->whereIn('lead_stage_id', FilterList::ids($v))
+            ))
+            ->filter('group', fn (Builder $q, $v) => $q->whereHas(
+                'leads', fn (Builder $l) => $l->whereIn('lead_group_id', FilterList::ids($v))
+            ))
             ->filter('date_from', fn (Builder $q, $v) => $q->whereDate('created_at', '>=', $v))
             ->filter('date_to', fn (Builder $q, $v) => $q->whereDate('created_at', '<=', $v))
             ->defaultSort('id', 'desc');
