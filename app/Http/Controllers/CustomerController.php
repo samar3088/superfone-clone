@@ -14,11 +14,13 @@ use App\Models\Team;
 use App\Models\User;
 use App\Services\Crm\ContactImportService;
 use App\Services\Crm\CustomerService;
+use App\Services\Crm\NoteService;
 use App\Services\Crm\TaskService;
 use App\Services\Support\DataTableService;
 use App\Services\Support\ExportService;
 use App\Support\FilterList;
 use App\Support\LeadProviders;
+use App\Support\Permissions;
 use App\Support\Roles;
 use Illuminate\Contracts\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -174,12 +176,13 @@ class CustomerController extends Controller
     }
 
     /** One customer with every lead they have ever raised. */
-    public function show(Customer $customer): Response
+    public function show(Customer $customer, NoteService $notes): Response
     {
         return Inertia::render('customers/show', [
-            'customer' => $customer->loadCount(['leads', 'calls']),
+            'customer' => $customer->loadCount(['leads', 'calls', 'notes']),
             'leads' => $this->customers->leadHistory($customer),
             'duplicates' => $this->customers->findPotentialDuplicates($customer),
+            'notes' => $notes->timeline($customer),
         ]);
     }
 
@@ -203,6 +206,10 @@ class CustomerController extends Controller
     /** Fold duplicate records into this one. */
     public function merge(Request $request, Customer $customer): RedirectResponse
     {
+        // A merge soft-deletes the duplicate and moves its leads and calls, so
+        // it is a deletion in everything but name — owner only.
+        abort_unless($request->user()?->can(Permissions::CUSTOMER_MERGE), 403);
+
         $data = $request->validate([
             'duplicate_ids' => ['required', 'array', 'min:1'],
             'duplicate_ids.*' => ['integer', 'exists:customers,id'],
@@ -233,7 +240,7 @@ class CustomerController extends Controller
     private function table(Request $request): DataTableService
     {
         return DataTableService::for(
-            Customer::query()->active()->withCount('leads')->with([
+            Customer::query()->active()->withCount(['leads', 'notes'])->with([
                 'tags:id,name,color,emoji',
                 'team:id,name',
                 'creator:id,name',
