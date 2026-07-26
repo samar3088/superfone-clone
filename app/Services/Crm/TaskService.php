@@ -22,19 +22,64 @@ use Illuminate\Validation\ValidationException;
  */
 class TaskService
 {
+    /** Work on a lead nobody has done anything to yet. */
+    public const TAB_FRESH = 'fresh';
+
+    /** Work on a lead somebody has already started. */
+    public const TAB_FOLLOWUPS = 'followups';
+
+    /** Held empty until the client says what belongs here. */
+    public const TAB_REMINDERS = 'reminders';
+
+    public const TABS = [self::TAB_FRESH, self::TAB_FOLLOWUPS, self::TAB_REMINDERS];
+
     /**
-     * The three lists the To-Dos screen is split into.
+     * Narrow to one tab.
      *
-     * They are the three triggers under friendlier names: work raised by a
-     * first enquiry, work raised by a repeat one, and anything somebody added
-     * by hand. Splitting by trigger rather than by task type means a rule
-     * change never silently moves work between tabs.
+     * The split is *has anyone acted on this lead yet*, not what raised the
+     * work. Two signals say somebody has:
+     *
+     *   - the lead has moved. Its version starts at 1 and steps on every stage
+     *     or owner change, so anything above 1 has been handled.
+     *   - a to-do on the lead has been ticked off. That can happen without the
+     *     stage moving at all — a first call made, nothing agreed yet.
+     *
+     * Fresh is neither; Follow Ups is either. Between them they cover every
+     * to-do, so nothing can fall down the gap while Reminders is empty.
      */
-    public const TABS = [
-        'fresh' => Task::TRIGGER_NEW_LEAD,
-        'followups' => Task::TRIGGER_EXISTING_LEAD,
-        'reminders' => Task::TRIGGER_MANUAL,
-    ];
+    public function inTab(Builder $query, string $tab): Builder
+    {
+        return match ($tab) {
+            self::TAB_FRESH => $query
+                ->whereHas('lead', fn (Builder $l) => $l->where('version', 1))
+                ->whereNotIn('lead_id', $this->leadsWithCompletedWork()),
+
+            self::TAB_FOLLOWUPS => $query->where(fn (Builder $q) => $q
+                ->whereHas('lead', fn (Builder $l) => $l->where('version', '>', 1))
+                ->orWhereIn('lead_id', $this->leadsWithCompletedWork())),
+
+            /*
+             | Deliberately nothing. The client has not said what a Reminder is
+             | yet, and showing a guess is worse than showing an empty tab that
+             | says so — a guess gets worked, an empty tab gets asked about.
+             */
+            self::TAB_REMINDERS => $query->whereRaw('1 = 0'),
+        };
+    }
+
+    /**
+     * Leads with at least one to-do already ticked off.
+     *
+     * Written as a plain subquery rather than a nested whereHas: the outer
+     * query is also on tasks, and two tables of the same name in one condition
+     * is a correlation waiting to be read wrong.
+     */
+    private function leadsWithCompletedWork(): callable
+    {
+        return fn ($q) => $q->from('tasks')
+            ->select('lead_id')
+            ->whereNotNull('completed_at');
+    }
 
     /**
      * Everything this person may see, narrowed by the screen's filters.
@@ -98,16 +143,15 @@ class TaskService
      */
     public function tabCounts(Builder $base): array
     {
-        $totals = (clone $base)->open()
-            // Selected through the builder rather than raw SQL: "trigger" is a
-            // reserved word in MariaDB and needs quoting.
-            ->select('trigger')
-            ->selectRaw('count(*) as total')
-            ->groupBy('trigger')
-            ->pluck('total', 'trigger');
-
+        /*
+         | One count per tab rather than a single GROUP BY. The tabs are defined
+         | by conditions across two tables, not by a column that could be
+         | grouped on — and three cheap counts beat a query nobody can read.
+         */
         return collect(self::TABS)
-            ->map(fn (string $trigger) => (int) ($totals[$trigger] ?? 0))
+            ->mapWithKeys(fn (string $tab) => [
+                $tab => $this->inTab((clone $base)->open(), $tab)->count(),
+            ])
             ->all();
     }
 

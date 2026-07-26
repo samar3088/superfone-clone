@@ -35,8 +35,7 @@ class TaskController extends Controller
         $tab = $this->tab($request);
 
         $tasks = DataTableService::for(
-            (clone $base)
-                ->where('trigger', TaskService::TABS[$tab])
+            $this->tasks->inTab(clone $base, $tab)
                 ->with([
                     'lead:id,customer_id,name,mobile,is_existing,lead_stage_id',
                     'lead.stage:id,name,emoji,type',
@@ -72,9 +71,9 @@ class TaskController extends Controller
     {
         $asked = (string) $request->string('tab');
 
-        return array_key_exists($asked, TaskService::TABS)
+        return in_array($asked, TaskService::TABS, true)
             ? $asked
-            : array_key_first(TaskService::TABS);
+            : TaskService::TABS[0];
     }
 
     /**

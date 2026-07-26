@@ -41,11 +41,32 @@ interface Props {
     usageByTeam: { team: string; total: number }[];
 }
 
-/** Kept in step with TaskService::TABS. */
+/**
+ * Kept in step with TaskService::TABS.
+ *
+ * The split is whether anyone has acted on the lead yet — not what raised the
+ * work. Each tab says what it holds when it is empty, because an empty list
+ * with no explanation reads as a broken screen.
+ */
 const TABS = [
-    { key: 'fresh', label: 'Fresh Leads' },
-    { key: 'followups', label: 'Follow Ups' },
-    { key: 'reminders', label: 'Reminders' },
+    {
+        key: 'fresh',
+        label: 'Fresh Leads',
+        emptyTitle: 'Nothing untouched',
+        emptyHint: 'Every lead with work outstanding has already been picked up. New enquiries land here first.',
+    },
+    {
+        key: 'followups',
+        label: 'Follow Ups',
+        emptyTitle: 'Nothing to chase',
+        emptyHint: 'Work on leads someone has already started appears here — once a lead moves stage or a to-do is ticked off.',
+    },
+    {
+        key: 'reminders',
+        label: 'Reminders',
+        emptyTitle: 'Not built yet',
+        emptyHint: 'Held empty on purpose until the client tells us what a Reminder should be. Nothing is hidden here — every to-do is on one of the other two tabs.',
+    },
 ];
 
 /*
@@ -71,6 +92,8 @@ export default function TasksIndex({
     usageByTeam,
 }: Props) {
     const [moreFilters, setMoreFilters] = useState(false);
+
+    const current = TABS.find((t) => t.key === tab) ?? TABS[0];
 
     /*
      | Three controls stay in the row: what you are looking for, whether it is
@@ -209,8 +232,8 @@ export default function TasksIndex({
                     filters={{ ...filters, tab }}
                     url="/todos"
                     ownSearch
-                    emptyTitle="Nothing to do here"
-                    emptyHint="To-dos appear when a campaign's rules raise one, or when you add one against a lead."
+                    emptyTitle={current.emptyTitle}
+                    emptyHint={current.emptyHint}
                     renderCard={(t) => <TaskCard task={t} />}
                 />
             </div>

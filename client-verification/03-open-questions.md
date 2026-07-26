@@ -85,6 +85,39 @@ Full detail in [01-lead-duplicate-rules.md](01-lead-duplicate-rules.md).
 | B6 | **Field Priority Order** does nothing — screen is deliberately read-only | What is it meant to change? Field order on a lead? Columns in a list? Which fields are mandatory? |
 | B7 | A **member can do their own work but delete nothing at all** | See B7 below — is anything on the "cannot" list something a member should be able to do? |
 | B8 | A note with **several leads to choose from must say which one** | See B8 below — should we instead default to the newest lead and not ask? |
+| B9 | **Fresh Leads means untouched; Follow Ups means everything else** | See B9 below — is "untouched" the right line, and what is a *Reminder*? |
+
+### B9. What the three To-Dos tabs hold
+
+Work is split by **whether anyone has acted on the lead yet**, not by what
+raised the to-do.
+
+| Tab | Holds |
+|---|---|
+| **Fresh Leads** | Work on leads nobody has touched |
+| **Follow Ups** | Everything else |
+| **Reminders** | **Deliberately empty**, pending the client |
+
+Two things count as having touched a lead:
+
+1. **The lead has moved** — its stage or owner has changed. Every lead carries a
+   version that starts at 1 and steps on each change, so anything above 1 has
+   been handled by somebody.
+2. **A to-do on it has been ticked off.** This can happen without the stage
+   moving at all: a first call made, nothing agreed yet. Checking only the stage
+   would leave that lead sitting in Fresh Leads as though nobody had rung.
+
+Fresh is neither of those; Follow Ups is either. Between them they cover **every**
+to-do, which matters while Reminders is empty — nothing can fall down the gap.
+
+> **Confirm two things.**
+>
+> 1. Is *untouched* the right line for Fresh Leads, or does the client mean
+>    something narrower — say, only leads that have never even been opened?
+> 2. **What is a Reminder?** The tab is built and held empty on purpose rather
+>    than filled with a guess. A guess gets worked; an empty tab gets asked
+>    about. Candidates: to-dos somebody set for themselves by hand, or dated
+>    nudges unattached to any lead.
 
 ### B7. What a team member can and cannot do
 
@@ -182,10 +215,9 @@ Full detail in [02-go-live-plan.md](02-go-live-plan.md) §2.
 - **SMTP is not configured.** Mail currently writes to a log file.
 - The **To-Dos screen** now follows the client's reference: Fresh Leads / Follow
   Ups / Reminders tabs, task-type chips, a usage-by-team summary and a card per
-  to-do with call and WhatsApp actions. The three tabs are the three things that
-  raise a to-do — a first enquiry, a repeat, and one added by hand — so a change
-  to the campaign rules never silently moves work between tabs. Worth confirming
-  those three names read the way the client expects.
+  to-do with call and WhatsApp actions. What each tab holds is B9 above, and the
+  **Reminders tab is empty on purpose** — it says so on screen rather than
+  looking broken.
 - **Two things are called notes.** The contact record has a single free-text
   field, filled when the contact is created or imported; separately there is a
   dated note trail (B8). The contact page labels the first *"On the contact

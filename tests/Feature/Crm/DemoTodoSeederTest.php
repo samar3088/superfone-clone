@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Crm;
 
+use App\Models\Lead;
 use App\Models\Task;
 use App\Models\User;
 use App\Support\LeadProviders;
@@ -30,10 +31,13 @@ class DemoTodoSeederTest extends TestCase
 
         $props = $this->actingAs($owner)->get('/todos')->viewData('page')['props'];
 
-        // Every tab has open work, so none of the three reads as broken.
-        foreach (['fresh', 'followups', 'reminders'] as $tab) {
+        // Both live tabs have open work, so neither reads as broken.
+        foreach (['fresh', 'followups'] as $tab) {
             $this->assertGreaterThan(0, $props['tabCounts'][$tab], "The {$tab} tab is empty.");
         }
+
+        // Reminders is held empty on purpose, not by accident.
+        $this->assertSame(0, $props['tabCounts']['reminders']);
 
         $this->assertNotEmpty($props['tasks']['data']);
 
@@ -97,5 +101,25 @@ class DemoTodoSeederTest extends TestCase
         $this->seed(DemoTodoSeeder::class);
 
         $this->assertSame(0, Task::count());
+    }
+
+    public function test_both_ways_of_looking_worked_are_demonstrated(): void
+    {
+        $this->seed(DatabaseSeeder::class);
+
+        // A lead that moved stage.
+        $this->assertTrue(
+            Lead::where('version', '>', 1)->whereHas('tasks')->exists(),
+            'No seeded lead demonstrates work landing on Follow Ups because the stage moved.',
+        );
+
+        // And a lead that never moved but had something ticked off — the case
+        // that would be missed if only the stage were checked.
+        $this->assertTrue(
+            Lead::where('version', 1)
+                ->whereHas('tasks', fn ($t) => $t->whereNotNull('completed_at'))
+                ->exists(),
+            'No seeded lead demonstrates a completed to-do alone counting as work.',
+        );
     }
 }
