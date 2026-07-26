@@ -225,8 +225,9 @@ class ImportContactsTest extends TestCase
 
     public function test_a_number_already_on_file_matches_instead_of_duplicating(): void
     {
-        Customer::create(['name' => 'Asha', 'mobile' => '9876500001', 'last_activity_at' => now()])
-            ->channels()->create(['type' => 'phone', 'value' => '9876500001', 'is_primary' => true]);
+        // The model attaches the channel itself, which is what makes the
+        // number match on import rather than opening a second record.
+        Customer::create(['name' => 'Asha', 'mobile' => '9876500001', 'last_activity_at' => now()]);
 
         $this->upload($this->csv([['Asha', 'Rao', '9876500001']]));
 
@@ -239,8 +240,9 @@ class ImportContactsTest extends TestCase
 
     public function test_an_existing_contact_is_rewritten_only_when_asked(): void
     {
-        Customer::create(['name' => 'Asha', 'mobile' => '9876500001', 'last_activity_at' => now()])
-            ->channels()->create(['type' => 'phone', 'value' => '9876500001', 'is_primary' => true]);
+        // The model attaches the channel itself, which is what makes the
+        // number match on import rather than opening a second record.
+        Customer::create(['name' => 'Asha', 'mobile' => '9876500001', 'last_activity_at' => now()]);
 
         $this->upload(
             $this->csv([['Asha', 'Rao', '9876500001', '', 'Rao Weddings']]),

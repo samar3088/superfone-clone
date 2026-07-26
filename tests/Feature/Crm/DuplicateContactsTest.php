@@ -140,10 +140,6 @@ class DuplicateContactsTest extends TestCase
         $keep = $this->contact('Asha Rao', '9876500001');
         $gone = $this->contact('Asha Rao', '9876500002', ['city' => 'Bengaluru']);
 
-        $gone->channels()->create([
-            'type' => 'phone', 'value' => '9876500002', 'is_primary' => true,
-        ]);
-
         $lead = Lead::create([
             'customer_id' => $gone->id, 'name' => 'Asha Rao', 'mobile' => '9876500002',
             'source' => 'facebook', 'lead_stage_id' => LeadStage::value('id'),
@@ -208,6 +204,69 @@ class DuplicateContactsTest extends TestCase
         $this->actingAs($member)->getJson('/customers/duplicates')->assertForbidden();
 
         $this->assertSame(2, Customer::count());
+    }
+
+    /* ── The invariant the whole thing rests on ───────── */
+
+    public function test_a_contact_written_straight_to_the_table_still_gets_its_channels(): void
+    {
+        /*
+         | The channels table is what answers "have we met this person before?".
+         | A contact whose number exists only as a column matches nothing, and
+         | the next enquiry from that number opens a second record for the same
+         | person — which is exactly the duplicate this screen then has to
+         | clean up by hand.
+         */
+        $customer = Customer::create([
+            'name' => 'Asha Rao',
+            'mobile' => '9876500001',
+            'email' => 'Asha@Example.com',
+            'last_activity_at' => now(),
+        ]);
+
+        $this->assertSame('9876500001', $customer->channels()->where('type', 'phone')->value('value'));
+
+        // Normalised on the way in, so a differently-typed address still matches.
+        $this->assertSame('asha@example.com', $customer->channels()->where('type', 'email')->value('value'));
+    }
+
+    public function test_a_number_already_held_by_someone_else_is_not_taken_from_them(): void
+    {
+        $first = $this->contact('Asha Rao', '9876500001');
+
+        // Held by Asha as a second number rather than her primary, so the
+        // unique index on customers.mobile does not come into it — the only
+        // thing standing in the way is the one on (type, value).
+        $first->channels()->create([
+            'type' => 'phone', 'value' => '9876500009', 'is_primary' => false,
+        ]);
+
+        $second = $this->contact('Someone Else', '9876500009');
+
+        // The contact keeps the number in its own column, because that is what
+        // was asked for and refusing it would lose the typist's input. But the
+        // channel — the thing that decides who an enquiry belongs to — stays
+        // with whoever had it. Which of them is right is a merge decision.
+        $this->assertSame(1, CustomerChannel::where('value', '9876500009')->count());
+        $this->assertSame(
+            $first->id,
+            CustomerChannel::where('value', '9876500009')->value('customer_id'),
+        );
+        $this->assertNotSame($second->id, $first->id);
+    }
+
+    public function test_merging_does_not_leave_a_channel_behind_for_the_tombstone(): void
+    {
+        $keep = $this->contact('Asha Rao', '9876500001');
+        $gone = $this->contact('Asha Rao', '9876500002');
+
+        $this->actingAs($this->owner)
+            ->post("/customers/{$keep->id}/merge", ['duplicate_ids' => [$gone->id]]);
+
+        // The loser's mobile is stamped with a tombstone suffix on merge; that
+        // must not turn into a junk channel row.
+        $this->assertSame(0, CustomerChannel::where('customer_id', $gone->id)->count());
+        $this->assertSame(2, CustomerChannel::where('customer_id', $keep->id)->count());
     }
 
     public function test_a_guest_gets_nothing(): void

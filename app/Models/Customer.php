@@ -78,6 +78,53 @@ class Customer extends Model
                 $customer->name_key = self::nameKey($customer->name);
             }
         });
+
+        /*
+         | Every number and address a contact holds must exist as a channel row,
+         | because that table is what answers "have we met this person before?".
+         |
+         | The columns on the contact are a convenience for lists and exports;
+         | the channels are the identity. A contact written straight to the
+         | table — a seeder, a fixture, a one-off script — would carry a mobile
+         | that matches nothing, and the next enquiry from that number would
+         | quietly open a second record for the same person.
+         |
+         | Enforced here rather than asked of every caller, for the same reason
+         | the name is: one path forgetting is all it takes.
+         */
+        static::saved(function (self $customer): void {
+            // Nothing to keep reachable about a record that has been merged
+            // away — and its mobile has been stamped with a tombstone suffix.
+            if ($customer->merged_into_id) {
+                return;
+            }
+
+            if (! $customer->wasRecentlyCreated && ! $customer->wasChanged(['mobile', 'email'])) {
+                return;
+            }
+
+            foreach ([
+                CustomerChannel::PHONE => $customer->mobile,
+                CustomerChannel::EMAIL => $customer->email,
+            ] as $type => $raw) {
+                $value = blank($raw) ? null : CustomerChannel::normalise($type, (string) $raw);
+
+                if ($value === null) {
+                    continue;
+                }
+
+                /*
+                 | firstOrCreate on the unique pair, so if somebody else already
+                 | holds this value it is left with them. One number cannot
+                 | belong to two contacts, and which of them it is is a merge
+                 | decision rather than something to settle here.
+                 */
+                CustomerChannel::firstOrCreate(
+                    ['type' => $type, 'value' => $value],
+                    ['customer_id' => $customer->id, 'is_primary' => true],
+                );
+            }
+        });
     }
 
     /**

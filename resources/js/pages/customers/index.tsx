@@ -288,7 +288,7 @@ export default function CustomersIndex({
                                         Import CSV
                                     </MenuItem>
                                     <MenuItem onClick={() => { setMenuOpen(false); setDownloading(true); }}>
-                                        Download
+                                        Download (choose columns)
                                     </MenuItem>
                                     <MenuItem onClick={() => { setMenuOpen(false); setDedupe(true); }}>
                                         Delete duplicates
@@ -314,14 +314,16 @@ export default function CustomersIndex({
                 ownSearch
                 toolbar={
                     /*
-                     | No exportPath: Export is now the Download dialog, where
-                     | the columns can be chosen. Two buttons producing two
-                     | different files from the same rows would be a trap.
+                     | Export sits where it sits on every other list — pinned
+                     | right, after Filter and Reset — and downloads the usual
+                     | columns straight away. Choosing the columns is a separate,
+                     | rarer job, and it lives behind Download in the ··· menu.
                      */
                     <FilterForm
                         url="/customers"
                         filters={filters}
                         keys={FILTER_KEYS}
+                        exportPath="/customers/export"
                     >
                         <FilterSearch placeholder="Search name, mobile or email…" />
 
@@ -354,17 +356,6 @@ export default function CustomersIndex({
                             )}
                         </button>
 
-                        <button
-                            type="button"
-                            onClick={() => setDownloading(true)}
-                            className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg px-3 text-sm font-semibold transition hover:opacity-85"
-                            style={{ background: 'var(--info-soft)', color: 'var(--info)' }}
-                        >
-                            <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-                                <path d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
-                            Download
-                        </button>
                     </FilterForm>
                 }
             />

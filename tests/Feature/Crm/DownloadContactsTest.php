@@ -44,9 +44,10 @@ class DownloadContactsTest extends TestCase
             'last_activity_at' => now(),
         ]);
 
-        $customer->channels()->createMany([
-            ['type' => 'phone', 'value' => '9876500001', 'is_primary' => true],
-            ['type' => 'phone', 'value' => '9876500002', 'is_primary' => false],
+        // The primary is created by the model itself; this is the second
+        // number, which is what the SECONDARY PHONE column reads.
+        $customer->channels()->create([
+            'type' => 'phone', 'value' => '9876500002', 'is_primary' => false,
         ]);
 
         return $customer;
