@@ -86,6 +86,35 @@ Full detail in [01-lead-duplicate-rules.md](01-lead-duplicate-rules.md).
 | B7 | A **member can do their own work but delete nothing at all** | See B7 below — is anything on the "cannot" list something a member should be able to do? |
 | B8 | A note with **several leads to choose from must say which one** | See B8 below — should we instead default to the newest lead and not ask? |
 | B9 | **Reminders first, then Fresh Leads, then Follow Ups** | See B9 below — three points, including whether a completed first call should move a lead out of Fresh |
+| B10 | **An imported number already on file is matched, not skipped** | See B10 below — Superfone skips it; we attach the new details to the contact already there |
+
+### B10. What the contact import does with a number already on file
+
+The wizard follows the client's own three steps — upload and check, choose the
+settings, done — and reads the client's template columns exactly: FIRST NAME,
+LAST NAME, PRIMARY PHONE, SECONDARY PHONE, BUSINESS NAME, CITY, ADDRESS, EMAIL,
+WEBSITE URL, ADDITIONAL INFO. Files built against our earlier template still
+import; those headings are kept as unadvertised aliases.
+
+One deliberate difference from Superfone:
+
+| | Superfone | Here |
+|---|---|---|
+| Number already on file | *"Existing contacts will be skipped"* | **Matched.** The row's extra numbers and emails are attached to the contact already on file |
+| "Update existing contact if found" | Overwrites | Overwrites the contact's **details**; the numbers and emails are attached either way |
+
+The reasoning: attaching a second number to someone already in the book is the
+duplicate rule the client has already approved (see
+[01-lead-duplicate-rules.md](01-lead-duplicate-rules.md)), not an edit of their
+record. Skipping the row outright would silently throw that number away, and
+the next enquiry from it would look like a new person.
+
+> **Confirm:** should a row whose number is already on file be skipped
+> completely instead, matching Superfone exactly?
+
+Also worth noting: **nothing is written until Submit on step two.** The file is
+checked and set aside first, so a bad file costs nothing and the settings are
+chosen once the rows are known to be good.
 
 ### B9. What the three To-Dos tabs hold
 

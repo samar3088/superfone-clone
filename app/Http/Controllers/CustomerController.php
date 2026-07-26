@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\Crm\CustomerFilterRequest;
 use App\Http\Requests\Crm\ImportContactsRequest;
+use App\Http\Requests\Crm\RunImportRequest;
 use App\Http\Requests\Crm\StoreCustomerRequest;
 use App\Models\Customer;
 use App\Models\Lead;
@@ -23,6 +24,7 @@ use App\Support\LeadProviders;
 use App\Support\Permissions;
 use App\Support\Roles;
 use Illuminate\Contracts\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -152,13 +154,40 @@ class CustomerController extends Controller
         ]);
     }
 
-    public function import(ImportContactsRequest $request, ContactImportService $importer): RedirectResponse
+    /**
+     * Step one of the import: check the file and park it.
+     *
+     * Answers as JSON rather than as a redirect, because the wizard stays on
+     * the same modal and only moves its own step forward — a page round-trip
+     * would throw away the choices already made on it.
+     */
+    public function importCheck(ImportContactsRequest $request, ContactImportService $importer): JsonResponse
     {
-        $result = $importer->import(
+        return response()->json($importer->inspect(
             $request->file('file'),
             $request->user(),
-            $request->integer('team_id') ?: null,
-        );
+            $request->boolean('skip_phone_check'),
+        ));
+    }
+
+    /** Step two: write the checked file into the book. */
+    public function import(RunImportRequest $request, ContactImportService $importer): RedirectResponse
+    {
+        $data = $request->validated();
+
+        $result = $importer->run($data['token'], $request->user(), [
+            'team_id' => $data['team_id'] ?? null,
+            'lead_stage_id' => $data['lead_stage_id'] ?? null,
+            'lead_group_id' => $data['lead_group_id'] ?? null,
+            'tags' => $data['tags'] ?? [],
+            'assign_to' => $data['assign_to'] ?? [],
+            'update_existing' => $data['update_existing'] ?? false,
+            'skip_phone_check' => $data['skip_phone_check'] ?? false,
+            'create_task' => $data['create_task'] ?? false,
+            'task_type' => $data['task_type'] ?? null,
+            'task_title' => $data['task_title'] ?? null,
+            'task_due_at' => $data['task_due_at'] ?? null,
+        ]);
 
         $summary = "{$result['created']} added";
 
@@ -172,7 +201,8 @@ class CustomerController extends Controller
 
         return back()
             ->with($result['created'] > 0 ? 'success' : 'error', "Import finished — {$summary}.")
-            ->with('importErrors', $result['errors']);
+            ->with('importErrors', $result['errors'])
+            ->with('importSummary', $result);
     }
 
     /** One customer with every lead they have ever raised. */

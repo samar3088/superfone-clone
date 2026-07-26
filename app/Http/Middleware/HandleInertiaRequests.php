@@ -51,6 +51,13 @@ class HandleInertiaRequests extends Middleware
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),
                 'otp' => fn () => $request->session()->get('otp'),
+                /*
+                 | The import's result, so the wizard's last step can report
+                 | what actually happened. It was flashed to the session but
+                 | never shared, which meant the rejected-rows list had nothing
+                 | to render and silently showed nothing at all.
+                 */
+                'import' => fn () => $request->session()->get('importSummary'),
             ],
         ];
     }

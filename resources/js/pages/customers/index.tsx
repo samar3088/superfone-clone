@@ -352,7 +352,13 @@ export default function CustomersIndex({
                 />
             )}
 
-            {importing && <ImportContacts onClose={() => setImporting(false)} />}
+            {importing && (
+                <ImportContacts
+                    options={options}
+                    members={members}
+                    onClose={() => setImporting(false)}
+                />
+            )}
 
             {notesFor && <NotesModal customer={notesFor} onClose={() => setNotesFor(null)} />}
 
