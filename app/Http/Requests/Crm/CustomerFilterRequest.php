@@ -40,7 +40,10 @@ class CustomerFilterRequest extends FormRequest
             'date_to' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:date_from'],
             'sort' => ['nullable', 'string', 'max:40'],
             'direction' => ['nullable', 'in:asc,desc'],
-            'per_page' => ['nullable', 'integer', 'min:1', 'max:200'],
+            // Any size the control does not offer is snapped to the default by
+            // DataTableService rather than rejected — an old bookmark carrying
+            // a since-retired size should still open the page.
+            'per_page' => ['nullable', 'integer'],
             'page' => ['nullable', 'integer', 'min:1'],
         ];
     }

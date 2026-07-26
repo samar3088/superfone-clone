@@ -23,7 +23,16 @@ class DataTableService
     /** Guardrail: a caller can never request an unbounded page. */
     public const MAX_PER_PAGE = 200;
 
-    private const DEFAULT_PER_PAGE = 15;
+    /**
+     * Sizes the page-size control offers.
+     *
+     * Anything else in the query string is snapped to the nearest of these
+     * rather than honoured — the control would otherwise show a value it has
+     * no option for, and a hand-typed per_page=137 is nobody's intent.
+     */
+    public const PAGE_SIZES = [10, 25, 50, 100];
+
+    private const DEFAULT_PER_PAGE = 25;
 
     /** @var array<int, string> */
     private array $searchable = [];
@@ -89,14 +98,21 @@ class DataTableService
     /** Apply request state and return one page of results. */
     public function paginate(Request $request): LengthAwarePaginator
     {
-        $perPage = min(
-            max((int) $request->integer('per_page', self::DEFAULT_PER_PAGE), 1),
-            self::MAX_PER_PAGE
-        );
-
         return $this->build($request)
-            ->paginate($perPage)
+            ->paginate($this->perPage($request))
             ->withQueryString();
+    }
+
+    /** One of the offered sizes, whatever the query string asked for. */
+    private function perPage(Request $request): int
+    {
+        $requested = (int) $request->integer('per_page', self::DEFAULT_PER_PAGE);
+
+        if (in_array($requested, self::PAGE_SIZES, true)) {
+            return $requested;
+        }
+
+        return self::DEFAULT_PER_PAGE;
     }
 
     /**

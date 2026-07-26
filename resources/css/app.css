@@ -32,6 +32,7 @@
     --color-popover-foreground: var(--popover-foreground);
     --color-primary: var(--primary);
     --color-primary-foreground: var(--primary-foreground);
+    --color-primary-soft: var(--primary-soft);
     --color-secondary: var(--secondary);
     --color-secondary-foreground: var(--secondary-foreground);
     --color-muted: var(--muted);
@@ -70,6 +71,9 @@
 
     --primary: #0b5d51;             /* deep teal — the single bold note */
     --primary-foreground: #f4fbf9;
+    /* The brand at a whisper, for banding a table's head and foot without
+       turning every list into a block of colour. */
+    --primary-soft: #e4efec;
     --secondary: #f1efe9;
     --secondary-foreground: #2b3a36;
     --muted: #f3f1eb;
@@ -108,6 +112,7 @@
 
     --primary: #4fd1b5;             /* teal re-stepped for a dark ground */
     --primary-foreground: #06231e;
+    --primary-soft: #102b26;
     --secondary: #1e2724;
     --secondary-foreground: #d3ded9;
     --muted: #1c2522;

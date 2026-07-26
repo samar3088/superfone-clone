@@ -1,6 +1,9 @@
 import { router } from '@inertiajs/react';
 import { ReactNode, useEffect, useRef, useState } from 'react';
 
+/** Kept in step with DataTableService::PAGE_SIZES on the server. */
+const PAGE_SIZES = [10, 25, 50, 100];
+
 export interface Paginated<T> {
     data: T[];
     current_page: number;
@@ -113,13 +116,20 @@ export function DataTable<T extends { id: number }>({
             <div className="overflow-hidden rounded-xl border border-border bg-card">
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm">
-                        <thead>
+                        {/*
+                            Banded in the brand colour so the head and foot read
+                            as the frame around the data rather than more rows.
+                            A tint, not the full teal — a solid band across every
+                            list would shout.
+                        */}
+                        <thead style={{ background: 'var(--primary-soft)' }}>
                             <tr className="border-b border-border">
                                 {columns.map((col) => (
                                     <th
                                         key={col.key}
                                         scope="col"
                                         className={`px-4 py-3 font-semibold ${col.align === 'right' ? 'text-right' : 'text-left'}`}
+                                        style={{ color: 'var(--primary)' }}
                                     >
                                         {col.sortable ? (
                                             <button
@@ -168,12 +178,34 @@ export function DataTable<T extends { id: number }>({
                 </div>
 
                 {page.total > 0 && (
-                    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3">
-                        <p className="text-sm text-muted-foreground">
-                            Showing <span className="tabular font-medium text-foreground">{page.from}</span>–
-                            <span className="tabular font-medium text-foreground">{page.to}</span> of{' '}
-                            <span className="tabular font-medium text-foreground">{page.total}</span>
-                        </p>
+                    <div
+                        className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3"
+                        style={{ background: 'var(--primary-soft)' }}
+                    >
+                        <div className="flex flex-wrap items-center gap-3">
+                            <p className="text-sm text-muted-foreground">
+                                Showing <span className="tabular font-medium text-foreground">{page.from}</span>–
+                                <span className="tabular font-medium text-foreground">{page.to}</span> of{' '}
+                                <span className="tabular font-medium text-foreground">{page.total}</span>
+                            </p>
+
+                            <label className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                                Show
+                                <select
+                                    aria-label="Rows per page"
+                                    value={page.per_page}
+                                    // Back to page 1: page 7 of a 10-row list is
+                                    // often past the end of a 100-row one.
+                                    onChange={(e) => reload({ per_page: Number(e.target.value), page: undefined })}
+                                    className="h-8 rounded-lg border border-input bg-card px-2 text-sm font-medium text-foreground outline-none focus:border-primary"
+                                >
+                                    {PAGE_SIZES.map((n) => (
+                                        <option key={n} value={n}>{n}</option>
+                                    ))}
+                                </select>
+                            </label>
+                        </div>
+
                         <div className="flex items-center gap-2">
                             <PageButton
                                 disabled={page.current_page <= 1}
