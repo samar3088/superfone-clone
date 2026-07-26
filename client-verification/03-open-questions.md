@@ -116,6 +116,19 @@ Also worth noting: **nothing is written until Submit on step two.** The file is
 checked and set aside first, so a bad file costs nothing and the settings are
 chosen once the rows are known to be good.
 
+**Downloading** is the mirror image. The dialog offers the same ten template
+columns first, spelled identically and in the same order, then ours — tags,
+lead stage, lead owner, team, counts, dates. Tick the first ten and the file
+that comes out **imports straight back**, which is how a bulk update is
+actually done. There is a test that downloads and re-imports to keep that true.
+
+One difference worth flagging: Superfone caps a download at **one month of
+data**. We do not. Exports here stream row by row rather than being built in
+memory, so the size of the range costs nothing — a cap would be a limitation
+copied for no reason.
+
+> **Confirm:** is the one-month cap something the client actually wants kept?
+
 ### B9. What the three To-Dos tabs hold
 
 Read in this order. The order is what makes the three exhaustive and

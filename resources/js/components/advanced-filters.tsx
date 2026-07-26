@@ -109,7 +109,12 @@ export function AdvancedFilters({
     return (
         <Modal open onClose={onClose} title="Filters" wide hideHeader>
             <div className="-m-6">
-                <header className="flex items-center justify-between gap-3 border-b border-border px-5 py-4">
+                {/*
+                    pr-16 leaves room for the modal's own close button, which is
+                    positioned absolutely at the top right. Without it "Clear
+                    all" sits directly underneath the ✕ and the two overlap.
+                */}
+                <header className="flex items-center justify-between gap-3 border-b border-border py-4 pl-5 pr-16">
                     <div className="flex items-center gap-2">
                         <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
                             <path d="M3 5h18l-7 8v5l-4 2v-7z" strokeLinejoin="round" />

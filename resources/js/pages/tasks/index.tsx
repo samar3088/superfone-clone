@@ -407,22 +407,12 @@ function TaskCard({ task }: { task: Task }) {
             </span>
 
             <div className="flex shrink-0 items-center gap-1.5">
+                {/* Call only. WhatsApp is not in scope, so there is no button
+                    for it rather than one that goes somewhere unsupported. */}
                 {lead && (
-                    <>
-                        <IconLink href={`tel:${lead.mobile}`} label={`Call ${lead.name}`} tone="var(--good)">
-                            <path d="M4 5c0-1 1-2 2-2h1.5l1.5 4-2 1a12 12 0 0 0 5 5l1-2 4 1.5V19c0 1-1 2-2 2A16 16 0 0 1 4 5Z" />
-                        </IconLink>
-
-                        <IconLink
-                            href={`https://wa.me/91${lead.mobile}`}
-                            label={`WhatsApp ${lead.name}`}
-                            tone="#25d366"
-                            external
-                        >
-                            <path d="M3.5 20.5 5 16a8 8 0 1 1 3 3l-4.5 1.5Z" />
-                            <path d="M8.5 9.5c0 3 3 6 6 6l1.5-1.5-2-1-1 1c-1-.5-2-1.5-2.5-2.5l1-1-1-2-2 1Z" />
-                        </IconLink>
-                    </>
+                    <IconLink href={`tel:${lead.mobile}`} label={`Call ${lead.name}`} tone="var(--good)">
+                        <path d="M4 5c0-1 1-2 2-2h1.5l1.5 4-2 1a12 12 0 0 0 5 5l1-2 4 1.5V19c0 1-1 2-2 2A16 16 0 0 1 4 5Z" />
+                    </IconLink>
                 )}
 
                 <button
@@ -506,13 +496,11 @@ function IconLink({
     href,
     label,
     tone,
-    external = false,
     children,
 }: {
     href: string;
     label: string;
     tone: string;
-    external?: boolean;
     children: React.ReactNode;
 }) {
     return (
@@ -520,7 +508,6 @@ function IconLink({
             href={href}
             aria-label={label}
             title={label}
-            {...(external ? { target: '_blank', rel: 'noreferrer' } : {})}
             className="grid size-8 place-items-center rounded-lg border border-border transition hover:opacity-80"
             style={{ color: tone }}
         >

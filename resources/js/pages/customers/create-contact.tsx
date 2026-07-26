@@ -23,6 +23,9 @@ export interface ContactOptions {
     todoTypes: string[];
     stages: Named[];
     groups: Named[];
+    /** Read by the Download dialog rather than this form. */
+    downloadColumns: { key: string; heading: string }[];
+    downloadDefaults: string[];
 }
 
 /** "+919403890373, VARIETY VINTAGE" — the number only once one exists. */

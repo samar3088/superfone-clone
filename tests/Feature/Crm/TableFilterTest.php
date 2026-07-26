@@ -177,8 +177,12 @@ class TableFilterTest extends TestCase
         $response->assertOk();
         $csv = $response->streamedContent();
 
-        $this->assertStringContainsString('Old Alice Lead', $csv);
-        $this->assertStringNotContainsString('Bob Lead', $csv);
+        /*
+         | The download splits a name into FIRST NAME and LAST NAME so it can be
+         | imported straight back, so "Old Alice Lead" comes out as two cells.
+         */
+        $this->assertStringContainsString('"Old Alice",Lead', $csv);
+        $this->assertStringNotContainsString('Bob,Lead', $csv);
     }
 
     /* ── Scope ────────────────────────────────────────── */

@@ -19,6 +19,7 @@ use App\Services\Crm\NoteService;
 use App\Services\Crm\TaskService;
 use App\Services\Support\DataTableService;
 use App\Services\Support\ExportService;
+use App\Support\ContactColumns;
 use App\Support\FilterList;
 use App\Support\LeadProviders;
 use App\Support\Permissions;
@@ -68,6 +69,11 @@ class CustomerController extends Controller
                 'stages' => LeadStage::where('is_active', true)->orderBy('sequence')
                     ->get(['id', 'name', 'emoji']),
                 'groups' => LeadGroup::where('is_active', true)->get(['id', 'name']),
+                // Offered by the Download dialog, in the order a file writes them.
+                'downloadColumns' => collect(ContactColumns::CHOICES)
+                    ->map(fn (string $heading, string $key) => compact('key', 'heading'))
+                    ->values(),
+                'downloadDefaults' => ContactColumns::DEFAULTS,
             ],
         ]);
     }
@@ -250,20 +256,29 @@ class CustomerController extends Controller
         return back()->with('success', 'Customers merged. All their leads now sit under this record.');
     }
 
+    /**
+     * Download the contact book, or the part of it currently filtered.
+     *
+     * Which columns come out is the caller's choice; the order is always the
+     * canonical one, so two downloads of the same tick-boxes are the same file.
+     */
     public function export(CustomerFilterRequest $request): StreamedResponse
     {
+        $columns = ContactColumns::resolve(
+            FilterList::parse((string) $request->string('columns')),
+        );
+
         return $this->exports->streamCsv(
             // Same filtered query as the screen — previously the export ignored
             // every filter and always dumped the full customer list.
-            $this->table($request)->query($request)->withCount('calls'),
-            ['Name', 'Mobile', 'Email', 'City', 'Leads', 'Calls', 'Last activity', 'Added on'],
-            fn (Customer $c) => [
-                $c->name, $c->mobile, $c->email ?? '', $c->city ?? '',
-                $c->leads_count, $c->calls_count,
-                $c->last_activity_at?->toDateTimeString() ?? '',
-                $c->created_at->toDateTimeString(),
-            ],
-            'customers-'.now()->format('Y-m-d-Hi').'.csv',
+            $this->table($request)->query($request)
+                ->withCount('calls')
+                // Second numbers live in customer_channels, so without this the
+                // SECONDARY PHONE column would silently come out blank.
+                ->with('channels:id,customer_id,type,value,is_primary'),
+            ContactColumns::headings($columns),
+            fn (Customer $c) => ContactColumns::row($c, $columns),
+            'contacts-'.now()->format('Y-m-d-Hi').'.csv',
         );
     }
 

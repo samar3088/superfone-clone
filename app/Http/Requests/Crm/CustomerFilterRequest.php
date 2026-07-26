@@ -38,6 +38,13 @@ class CustomerFilterRequest extends FormRequest
                 ]])->all(),
             'date_from' => ['nullable', 'date_format:Y-m-d'],
             'date_to' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:date_from'],
+            /*
+             | Which columns a download should carry. Unknown keys are dropped
+             | by ContactColumns rather than rejected here — a stale bookmark
+             | naming a since-renamed column should still download.
+             */
+            'columns' => ['nullable', 'string', 'max:400'],
+
             'sort' => ['nullable', 'string', 'max:40'],
             'direction' => ['nullable', 'in:asc,desc'],
             // Any size the control does not offer is snapped to the default by

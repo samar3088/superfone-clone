@@ -7,6 +7,7 @@ import { ColumnChoice, TableSettings } from '@/components/table-settings';
 import { Button } from '@/components/ui-kit';
 import { useColumns } from '@/hooks/use-columns';
 import CreateContact, { ContactOptions } from './create-contact';
+import DownloadContacts from './download-contacts';
 import ImportContacts from './import-contacts';
 import NotesModal from './notes';
 import {
@@ -83,6 +84,7 @@ export default function CustomersIndex({
     const [tableSettings, setTableSettings] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
     const [notesFor, setNotesFor] = useState<Customer | null>(null);
+    const [downloading, setDownloading] = useState(false);
 
     const [visibleColumns, setVisibleColumns] = useColumns('customers.columns', DEFAULT_COLUMNS);
 
@@ -283,6 +285,9 @@ export default function CustomersIndex({
                                     <MenuItem onClick={() => { setMenuOpen(false); setImporting(true); }}>
                                         Import CSV
                                     </MenuItem>
+                                    <MenuItem onClick={() => { setMenuOpen(false); setDownloading(true); }}>
+                                        Download
+                                    </MenuItem>
                                     <MenuItem onClick={() => { setMenuOpen(false); setTableSettings(true); }}>
                                         Table settings
                                     </MenuItem>
@@ -303,11 +308,15 @@ export default function CustomersIndex({
                 emptyHint="Customers are created automatically as leads arrive. Try resetting the filters."
                 ownSearch
                 toolbar={
+                    /*
+                     | No exportPath: Export is now the Download dialog, where
+                     | the columns can be chosen. Two buttons producing two
+                     | different files from the same rows would be a trap.
+                     */
                     <FilterForm
                         url="/customers"
                         filters={filters}
                         keys={FILTER_KEYS}
-                        exportPath="/customers/export"
                     >
                         <FilterSearch placeholder="Search name, mobile or email…" />
 
@@ -339,6 +348,18 @@ export default function CustomersIndex({
                                 </span>
                             )}
                         </button>
+
+                        <button
+                            type="button"
+                            onClick={() => setDownloading(true)}
+                            className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg px-3 text-sm font-semibold transition hover:opacity-85"
+                            style={{ background: 'var(--info-soft)', color: 'var(--info)' }}
+                        >
+                            <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+                                <path d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                            Download
+                        </button>
                     </FilterForm>
                 }
             />
@@ -361,6 +382,15 @@ export default function CustomersIndex({
             )}
 
             {notesFor && <NotesModal customer={notesFor} onClose={() => setNotesFor(null)} />}
+
+            {downloading && (
+                <DownloadContacts
+                    filters={filters}
+                    columns={options.downloadColumns}
+                    defaults={options.downloadDefaults}
+                    onClose={() => setDownloading(false)}
+                />
+            )}
 
             {tableSettings && (
                 <TableSettings
