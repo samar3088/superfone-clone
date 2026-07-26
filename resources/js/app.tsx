@@ -21,7 +21,13 @@ createInertiaApp({
         root.render(<App {...props} />);
     },
     progress: {
-        color: '#4B5563',
+        // Brand teal rather than the default grey.
+        color: '#0b5d51',
+        // Inertia waits 250ms before showing anything, on the theory that a
+        // fast response needs no bar. On a slow connection or a big filtered
+        // query that quarter second is exactly when the page looks frozen.
+        delay: 120,
+        showSpinner: true,
     },
 });
 

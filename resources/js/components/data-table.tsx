@@ -1,6 +1,8 @@
 import { router } from '@inertiajs/react';
 import { ReactNode, useEffect, useRef, useState } from 'react';
 
+import { useLoading } from '@/hooks/use-loading';
+
 /** Kept in step with DataTableService::PAGE_SIZES on the server. */
 const PAGE_SIZES = [10, 25, 50, 100];
 
@@ -59,6 +61,10 @@ export function DataTable<T extends { id: number }>({
     const [search, setSearch] = useState(filters.search ?? '');
     const firstRender = useRef(true);
 
+    // Scoped to this table's own url, so leaving the page does not flash a
+    // loading state over the screen being left behind.
+    const loading = useLoading(url);
+
     // Debounced so a query fires once the user stops typing, not per keystroke.
     useEffect(() => {
         if (ownSearch || firstRender.current) {
@@ -113,8 +119,27 @@ export function DataTable<T extends { id: number }>({
             </div>
             )}
 
-            <div className="overflow-hidden rounded-xl border border-border bg-card">
-                <div className="overflow-x-auto">
+            <div className="relative overflow-hidden rounded-xl border border-border bg-card">
+                {/*
+                    Dimmed rather than emptied. Replacing the table with a
+                    spinner collapses the page height and throws away the rows
+                    someone is still reading — this keeps both, and says the
+                    numbers are a moment out of date.
+                */}
+                {loading && (
+                    <div
+                        className="absolute inset-0 z-20 grid place-items-center bg-card/60 backdrop-blur-[1px]"
+                        role="status"
+                        aria-live="polite"
+                    >
+                        <span className="flex items-center gap-2.5 rounded-full border border-border bg-card px-4 py-2 text-sm font-medium shadow-lg">
+                            <Spinner />
+                            Loading…
+                        </span>
+                    </div>
+                )}
+
+                <div className={`overflow-x-auto transition-opacity ${loading ? 'opacity-60' : ''}`}>
                     <table className="w-full text-sm">
                         {/* .table-head is defined once in app.css so the
                             hand-rolled tables elsewhere band identically. */}
@@ -239,6 +264,22 @@ function PageButton({
         >
             {children}
         </button>
+    );
+}
+
+/** Shared spinner — also used by the filter panel while it applies. */
+export function Spinner({ className = 'size-4' }: { className?: string }) {
+    return (
+        <svg className={`${className} animate-spin`} viewBox="0 0 24 24" aria-hidden>
+            <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="3" fill="none" opacity="0.2" />
+            <path
+                d="M21 12a9 9 0 0 0-9-9"
+                stroke="currentColor"
+                strokeWidth="3"
+                fill="none"
+                strokeLinecap="round"
+            />
+        </svg>
     );
 }
 

@@ -1,8 +1,9 @@
 import { router } from '@inertiajs/react';
 import { useEffect, useMemo, useState } from 'react';
 
-import { Button, Modal } from '@/components/ui-kit';
+import { Spinner } from '@/components/data-table';
 import { Filters } from '@/components/table-filters';
+import { Button, Modal } from '@/components/ui-kit';
 
 export interface FilterOption {
     value: string;
@@ -85,12 +86,19 @@ export function AdvancedFilters({
 
     const totalGroups = groups.filter((g) => countFor(g) > 0).length;
 
+    const [applying, setApplying] = useState(false);
+
     const apply = () => {
+        setApplying(true);
+
         router.get(url, { ...filters, ...draft, page: undefined }, {
             preserveState: true,
             preserveScroll: true,
             replace: true,
             onSuccess: onClose,
+            // Cleared on finish, not success — a failed or cancelled visit
+            // would otherwise leave the panel stuck saying "Applying…".
+            onFinish: () => setApplying(false),
         });
     };
 
@@ -178,8 +186,19 @@ export function AdvancedFilters({
                     </p>
 
                     <div className="flex gap-2">
-                        <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
-                        <Button type="button" onClick={apply}>Apply filters</Button>
+                        <Button type="button" variant="ghost" onClick={onClose} disabled={applying}>
+                            Cancel
+                        </Button>
+                        <Button type="button" onClick={apply} disabled={applying}>
+                            {applying ? (
+                                <span className="inline-flex items-center gap-2">
+                                    <Spinner className="size-3.5" />
+                                    Applying…
+                                </span>
+                            ) : (
+                                'Apply filters'
+                            )}
+                        </Button>
                     </div>
                 </footer>
             </div>
