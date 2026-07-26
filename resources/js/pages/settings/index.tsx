@@ -323,7 +323,7 @@ function TagTable({ rows, onEdit }: { rows: Tag[]; onEdit: (t: Tag) => void }) {
     return (
         <div className="overflow-x-auto border-t border-border">
             <table className="w-full text-sm">
-                <thead>
+                <thead className="table-head">
                     <tr className="border-b border-border">
                         <th className="px-5 py-3 text-left"><span className="eyebrow">Tag ID</span></th>
                         <th className="px-5 py-3 text-left"><span className="eyebrow">Tag</span></th>
@@ -478,7 +478,7 @@ function StagesPanel({ stages, stageTypes }: { stages: Stage[]; stageTypes: stri
             <div className="overflow-hidden rounded-xl border border-border bg-card">
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm">
-                        <thead>
+                        <thead className="table-head">
                             <tr className="border-b border-border">
                                 {['Sequence', 'ID', 'Lead Stage', 'Type', 'Leads Attached', 'Status', ''].map((h) => (
                                     <th key={h} className="px-4 py-3 text-left"><span className="eyebrow">{h}</span></th>
@@ -574,7 +574,7 @@ function GroupsPanel({ groups }: { groups: Group[] }) {
             </div>
             <div className="overflow-hidden rounded-xl border border-border bg-card">
                 <table className="w-full text-sm">
-                    <thead>
+                    <thead className="table-head">
                         <tr className="border-b border-border">
                             {['ID', 'Lead Group', 'Type', 'Status'].map((h) => (
                                 <th key={h} className="px-4 py-3 text-left"><span className="eyebrow">{h}</span></th>
@@ -647,7 +647,7 @@ function FieldsPanel({ fields, fieldTypes }: { fields: CustomFieldRow[]; fieldTy
             ) : (
                 <div className="overflow-hidden rounded-xl border border-border bg-card">
                     <table className="w-full text-sm">
-                        <thead>
+                        <thead className="table-head">
                             <tr className="border-b border-border">
                                 {['Label', 'Key', 'Type', 'Required', ''].map((h) => (
                                     <th key={h} className="px-4 py-3 text-left"><span className="eyebrow">{h}</span></th>

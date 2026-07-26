@@ -179,7 +179,7 @@ export default function Dashboard({ range, syncedAt, callInsights, customerInsig
                         </p>
                         <div className="overflow-x-auto border-t border-border">
                             <table className="w-full text-sm">
-                                <thead>
+                                <thead className="table-head">
                                     <tr className="border-b border-border">
                                         {[
                                             'Staff Name', 'Team Name', 'Outgoing', 'Incoming', 'Connected',

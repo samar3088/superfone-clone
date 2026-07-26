@@ -36,7 +36,7 @@ export default function TeamsIndex({ teams }: { teams: Team[] }) {
             <div className="overflow-hidden rounded-xl border border-border bg-card">
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm">
-                        <thead>
+                        <thead className="table-head">
                             <tr className="border-b border-border">
                                 {['#', 'Team', 'Status', 'Number', 'Staff', 'Leads', ''].map((h, i) => (
                                     <th

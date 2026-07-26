@@ -870,7 +870,7 @@ function LogsTable({ logs }: { logs: LogRow[] }) {
     return (
         <section className="overflow-hidden rounded-xl border border-border bg-card">
             <table className="w-full text-sm">
-                <thead>
+                <thead className="table-head">
                     <tr className="border-b border-border">
                         {['When', 'Status', 'Message', 'Leads'].map((h) => (
                             <th key={h} className="px-4 py-3 text-left"><span className="eyebrow">{h}</span></th>

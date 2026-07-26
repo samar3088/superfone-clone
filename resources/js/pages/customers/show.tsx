@@ -98,7 +98,7 @@ export default function CustomerShow({
                     <h2 className="border-b border-border px-5 py-4 font-display text-lg font-bold">Lead history</h2>
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm">
-                            <thead>
+                            <thead className="table-head">
                                 <tr className="border-b border-border">
                                     {['Campaign', 'Source', 'Stage', 'Owner', 'Raised'].map((h) => (
                                         <th key={h} className="px-4 py-3 text-left">

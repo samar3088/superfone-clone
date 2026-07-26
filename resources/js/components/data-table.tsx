@@ -116,20 +116,15 @@ export function DataTable<T extends { id: number }>({
             <div className="overflow-hidden rounded-xl border border-border bg-card">
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm">
-                        {/*
-                            Banded in the brand colour so the head and foot read
-                            as the frame around the data rather than more rows.
-                            A tint, not the full teal — a solid band across every
-                            list would shout.
-                        */}
-                        <thead style={{ background: 'var(--primary-soft)' }}>
+                        {/* .table-head is defined once in app.css so the
+                            hand-rolled tables elsewhere band identically. */}
+                        <thead className="table-head">
                             <tr className="border-b border-border">
                                 {columns.map((col) => (
                                     <th
                                         key={col.key}
                                         scope="col"
                                         className={`px-4 py-3 font-semibold ${col.align === 'right' ? 'text-right' : 'text-left'}`}
-                                        style={{ color: 'var(--primary)' }}
                                     >
                                         {col.sortable ? (
                                             <button
@@ -178,10 +173,7 @@ export function DataTable<T extends { id: number }>({
                 </div>
 
                 {page.total > 0 && (
-                    <div
-                        className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3"
-                        style={{ background: 'var(--primary-soft)' }}
-                    >
+                    <div className="table-foot flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3">
                         <div className="flex flex-wrap items-center gap-3">
                             <p className="text-sm text-muted-foreground">
                                 Showing <span className="tabular font-medium text-foreground">{page.from}</span>–

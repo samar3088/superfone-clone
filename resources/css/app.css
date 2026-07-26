@@ -178,6 +178,27 @@
         font-size: 0.86em;
         letter-spacing: -0.01em;
     }
+
+    /*
+     | Table banding, defined once so every list matches — the shared
+     | DataTable and the hand-rolled tables in Settings and elsewhere.
+     |
+     | The head and foot are the frame around the data, so they carry the brand
+     | at a whisper. Full-strength teal across every table on every screen
+     | would be shouting.
+     */
+    .table-head {
+        background: var(--primary-soft);
+    }
+
+    .table-head th,
+    .table-head .eyebrow {
+        color: var(--primary);
+    }
+
+    .table-foot {
+        background: var(--primary-soft);
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {
