@@ -7,6 +7,7 @@ use App\Models\Integration;
 use App\Models\Lead;
 use App\Models\LeadStage;
 use App\Models\Task;
+use App\Models\Team;
 use App\Models\User;
 use App\Services\Crm\LeadService;
 use App\Services\Support\SettingsService;
@@ -360,10 +361,82 @@ class LeadTodoTest extends TestCase
         // A lead from last year: its 30-minute deadline is long gone.
         $this->arrive('2025-01-01T10:00:00+0000');
 
-        $props = $this->actingAs($this->member)->get('/todos?state=overdue')
+        $props = $this->actingAs($this->member)->get('/todos?status=overdue')
             ->viewData('page')['props'];
 
         $this->assertCount(1, $props['tasks']['data']);
-        $this->assertSame(1, $props['counts']['overdue']);
+
+        // The tab counts are measured against the same filter as the list, so
+        // the number on the tab and the rows beneath it always agree.
+        $this->assertSame(1, $props['tabCounts']['fresh']);
+        $this->assertSame(0, $props['tabCounts']['reminders']);
+    }
+
+    public function test_the_tabs_split_work_by_what_raised_it(): void
+    {
+        $this->withRules([
+            'new_lead_enabled' => true, 'todo_enabled' => true,
+            'todo_type' => 'FIRST CALL', 'todo_title' => 'Call',
+        ]);
+
+        $this->arrive();
+
+        $props = fn (string $query) => $this->actingAs($this->member)
+            ->get("/todos{$query}")->viewData('page')['props'];
+
+        // Raised by a first enquiry, so it belongs to Fresh Leads and nowhere
+        // else — and Fresh Leads is where you land without asking.
+        $this->assertSame('fresh', $props('')['tab']);
+        $this->assertCount(1, $props('')['tasks']['data']);
+        $this->assertCount(0, $props('?tab=followups')['tasks']['data']);
+        $this->assertCount(0, $props('?tab=reminders')['tasks']['data']);
+
+        // A tab name nobody offers falls back rather than erroring.
+        $this->assertSame('fresh', $props('?tab=nonsense')['tab']);
+    }
+
+    public function test_the_team_card_counts_open_work_against_the_contacts_team(): void
+    {
+        $this->withRules([
+            'new_lead_enabled' => true, 'todo_enabled' => true,
+            'todo_type' => 'FIRST CALL', 'todo_title' => 'Call',
+        ]);
+
+        $this->arrive();
+
+        $usage = $this->actingAs($this->member)->get('/todos')
+            ->viewData('page')['props']['usageByTeam'];
+
+        $this->assertCount(1, $usage);
+        $this->assertSame(1, $usage[0]['total']);
+    }
+
+    public function test_the_team_and_lead_date_filters_can_be_used_together(): void
+    {
+        $this->withRules([
+            'new_lead_enabled' => true, 'todo_enabled' => true,
+            'todo_type' => 'FIRST CALL', 'todo_title' => 'Call',
+        ]);
+
+        $lead = $this->arrive();
+
+        $team = Team::create(['name' => 'Sales', 'status' => 'active']);
+        $lead->customer->update(['team_id' => $team->id]);
+
+        $rows = fn (string $query) => $this->actingAs($this->member)
+            ->get("/todos?{$query}")->viewData('page')['props']['tasks']['data'];
+
+        /*
+         | Both filters reach into leads — one for the contact's team, one for
+         | when the enquiry came in. Used together they used to be able to leave
+         | an unqualified created_at ambiguous, so this asks for both at once.
+         */
+        $this->assertCount(1, $rows("team={$team->id}&lead_from=2026-06-01&lead_to=2026-12-31"));
+
+        // The same query with the enquiry outside the range finds nothing.
+        $this->assertCount(0, $rows("team={$team->id}&lead_from=2026-08-01"));
+
+        // And a different team excludes it.
+        $this->assertCount(0, $rows('team='.($team->id + 99)));
     }
 }

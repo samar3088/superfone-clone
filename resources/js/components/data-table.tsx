@@ -26,7 +26,8 @@ export interface Column<T> {
 
 interface Props<T> {
     page: Paginated<T>;
-    columns: Column<T>[];
+    /** Not needed when renderCard is given — a card has no columns. */
+    columns?: Column<T>[];
     filters: Record<string, string | undefined>;
     /** Route the table reloads from — all state travels in the query string. */
     url: string;
@@ -40,6 +41,16 @@ interface Props<T> {
     ownSearch?: boolean;
     emptyTitle?: string;
     emptyHint?: string;
+    /**
+     * Render each row as a card instead of a table row.
+     *
+     * Only the presentation changes: searching, filtering, sorting and paging
+     * still happen in SQL, and the footer, the page-size control and the
+     * loading overlay are all the ones below. The To-Dos screen uses it because
+     * a to-do reads as a thing to act on, not a row to scan — but it must not
+     * pay for that by loading every to-do into the browser.
+     */
+    renderCard?: (row: T) => ReactNode;
 }
 
 /**
@@ -49,7 +60,7 @@ interface Props<T> {
  */
 export function DataTable<T extends { id: number }>({
     page,
-    columns,
+    columns = [],
     filters,
     url,
     searchPlaceholder = 'Search…',
@@ -57,6 +68,7 @@ export function DataTable<T extends { id: number }>({
     ownSearch = false,
     emptyTitle = 'Nothing to show yet',
     emptyHint,
+    renderCard,
 }: Props<T>) {
     const [search, setSearch] = useState(filters.search ?? '');
     const firstRender = useRef(true);
@@ -139,6 +151,22 @@ export function DataTable<T extends { id: number }>({
                     </div>
                 )}
 
+                {renderCard ? (
+                    <div className={`divide-y divide-border/60 transition-opacity ${loading ? 'opacity-60' : ''}`}>
+                        {page.data.map((row) => (
+                            <div key={row.id}>{renderCard(row)}</div>
+                        ))}
+
+                        {page.data.length === 0 && (
+                            <div className="px-4 py-16 text-center">
+                                <p className="font-display text-base font-semibold">{emptyTitle}</p>
+                                {emptyHint && (
+                                    <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">{emptyHint}</p>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                ) : (
                 <div className={`overflow-x-auto transition-opacity ${loading ? 'opacity-60' : ''}`}>
                     <table className="w-full text-sm">
                         {/* .table-head is defined once in app.css so the
@@ -196,6 +224,7 @@ export function DataTable<T extends { id: number }>({
                         </tbody>
                     </table>
                 </div>
+                )}
 
                 {page.total > 0 && (
                     <div className="table-foot flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3">

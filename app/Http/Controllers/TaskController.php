@@ -3,12 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\Task;
+use App\Models\Team;
 use App\Models\User;
 use App\Services\Crm\TaskService;
 use App\Services\Support\DataTableService;
-use App\Support\FilterList;
+use App\Support\LeadProviders;
 use App\Support\Roles;
-use Illuminate\Contracts\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -16,7 +16,11 @@ use Inertia\Response;
 
 class TaskController extends Controller
 {
-    private const FILTER_KEYS = ['search', 'member', 'state', 'type'];
+    /** Everything the filter row owns, and everything Reset clears. */
+    private const FILTER_KEYS = [
+        'search', 'member', 'status', 'type', 'team',
+        'due_from', 'due_to', 'lead_from', 'lead_to',
+    ];
 
     public function __construct(private TaskService $tasks) {}
 
@@ -24,26 +28,25 @@ class TaskController extends Controller
     {
         $user = $request->user();
 
+        // One filtered query feeds three things: the list, the tab counts and
+        // the team card. Built once so they can never disagree.
+        $base = $this->tasks->filtered($user, $request->all());
+
+        $tab = $this->tab($request);
+
         $tasks = DataTableService::for(
-            Task::query()
-                ->with(['lead:id,name,mobile,is_existing', 'assignee:id,name'])
-                // Members see their own work, the same scoping as Leads.
-                ->when(! $user->isOwner(), fn (Builder $q) => $q->where('assigned_to', $user->id))
+            (clone $base)
+                ->where('trigger', TaskService::TABS[$tab])
+                ->with([
+                    'lead:id,customer_id,name,mobile,is_existing,lead_stage_id',
+                    'lead.stage:id,name,emoji,type',
+                    'assignee:id,name',
+                ])
         )
             ->select(['id', 'lead_id', 'assigned_to', 'trigger', 'type', 'title',
                 'due_at', 'completed_at', 'created_at'])
             ->searchable(['title', 'type'])
             ->sortable(['due_at', 'created_at', 'type'])
-            ->filter('member', fn (Builder $q, $v) => $user->isOwner()
-                ? $q->whereIn('assigned_to', FilterList::ids($v))
-                : $q)
-            ->filter('type', fn (Builder $q, $v) => $q->whereIn('type', FilterList::parse($v)))
-            ->filter('state', fn (Builder $q, $v) => match ($v) {
-                'open' => $q->open(),
-                'overdue' => $q->overdue(),
-                'done' => $q->whereNotNull('completed_at'),
-                default => $q,
-            })
             // Open work first, soonest deadline at the top — the order someone
             // actually wants to work through.
             ->defaultSort('due_at', 'asc')
@@ -51,26 +54,45 @@ class TaskController extends Controller
 
         return Inertia::render('tasks/index', [
             'tasks' => $tasks,
+            'tab' => $tab,
             'filters' => $request->only([...self::FILTER_KEYS, 'sort', 'direction', 'per_page']),
             'members' => $user->isOwner()
                 ? User::role([Roles::OWNER, Roles::MEMBER])->orderBy('name')->get(['id', 'name'])
                 : [],
-            'types' => Task::query()->distinct()->orderBy('type')->pluck('type'),
-            // Headline figures for the whole visible set, not the current page.
-            'counts' => [
-                'open' => $this->scoped($user)->open()->count(),
-                'overdue' => $this->scoped($user)->overdue()->count(),
-            ],
+            'teams' => Team::orderBy('name')->get(['id', 'name']),
+            // Only types that actually exist, so no chip leads to an empty list.
+            'types' => $this->chipTypes(),
+            'tabCounts' => $this->tasks->tabCounts($base),
+            'usageByTeam' => $this->tasks->usageByTeam($base),
         ]);
     }
 
-    /** Everything this user is allowed to see, before any filter. */
-    private function scoped(User $user)
+    /** The chosen tab, or the first one — never a name from the query string. */
+    private function tab(Request $request): string
     {
-        return Task::query()->when(
-            ! $user->isOwner(),
-            fn (Builder $q) => $q->where('assigned_to', $user->id),
-        );
+        $asked = (string) $request->string('tab');
+
+        return array_key_exists($asked, TaskService::TABS)
+            ? $asked
+            : array_key_first(TaskService::TABS);
+    }
+
+    /**
+     * Task types offered as chips.
+     *
+     * Ordered by the canonical list so the row reads the same way every time,
+     * with anything unexpected — a type typed by hand into a rule — appended
+     * rather than hidden.
+     */
+    private function chipTypes(): array
+    {
+        $present = Task::query()->distinct()->pluck('type')->all();
+        $known = LeadProviders::todoTypes();
+
+        return [
+            ...array_values(array_intersect($known, $present)),
+            ...array_values(array_diff($present, $known)),
+        ];
     }
 
     public function complete(Request $request, Task $task): RedirectResponse

@@ -1,14 +1,14 @@
-import { Head, router } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 
-import { Column, DataTable, Paginated } from '@/components/data-table';
+import { DataTable, Paginated } from '@/components/data-table';
 import {
+    DateRangeFilter,
     FilterForm,
     Filters,
     FilterSearch,
     FilterSelect,
     MultiSelect,
 } from '@/components/table-filters';
-import { Button, Pill } from '@/components/ui-kit';
 import ConsoleLayout from '@/layouts/console-layout';
 
 interface Task {
@@ -19,165 +19,426 @@ interface Task {
     due_at: string | null;
     completed_at: string | null;
     created_at: string;
-    lead: { id: number; name: string; mobile: string; is_existing: boolean } | null;
+    lead: {
+        id: number;
+        name: string;
+        mobile: string;
+        is_existing: boolean;
+        stage: { id: number; name: string; emoji: string | null; type: string } | null;
+    } | null;
     assignee: { id: number; name: string } | null;
 }
 
 interface Props {
     tasks: Paginated<Task>;
+    tab: string;
     filters: Filters;
     members: { id: number; name: string }[];
+    teams: { id: number; name: string }[];
     types: string[];
-    counts: { open: number; overdue: number };
+    tabCounts: Record<string, number>;
+    usageByTeam: { team: string; total: number }[];
 }
 
-const FILTER_KEYS = ['search', 'member', 'state', 'type'];
+/** Kept in step with TaskService::TABS. */
+const TABS = [
+    { key: 'fresh', label: 'Fresh Leads' },
+    { key: 'followups', label: 'Follow Ups' },
+    { key: 'reminders', label: 'Reminders' },
+];
 
-export default function TasksIndex({ tasks, filters, members, types, counts }: Props) {
-    const columns: Column<Task>[] = [
-        {
-            key: 'title',
-            header: 'To-do',
-            cell: (t) => (
-                <div className="min-w-0">
-                    <p className={`truncate ${t.completed_at ? 'text-muted-foreground line-through' : 'font-medium'}`}>
-                        {t.title}
-                    </p>
-                    <p className="truncate text-xs text-muted-foreground">{t.type}</p>
-                </div>
-            ),
-        },
-        {
-            key: 'lead',
-            header: 'Lead',
-            cell: (t) =>
-                t.lead ? (
-                    <div className="min-w-0">
-                        <p className="flex items-center gap-1.5 truncate">
-                            {t.lead.name}
-                            {t.lead.is_existing && (
-                                <span
-                                    className="shrink-0 rounded px-1 py-0.5 text-[10px] font-bold uppercase"
-                                    style={{ background: 'var(--warn-soft)', color: 'var(--warn)' }}
-                                >
-                                    Repeat
-                                </span>
-                            )}
-                        </p>
-                        <p className="data truncate text-xs text-muted-foreground">{t.lead.mobile}</p>
-                    </div>
-                ) : (
-                    <span className="text-muted-foreground">—</span>
-                ),
-        },
-        {
-            key: 'assignee',
-            header: 'Owner',
-            cell: (t) => t.assignee?.name ?? <span className="text-muted-foreground">Unassigned</span>,
-        },
-        {
-            key: 'due_at',
-            header: 'Due',
-            sortable: true,
-            cell: (t) => <Due at={t.due_at} done={!!t.completed_at} />,
-        },
-        {
-            key: 'actions',
-            header: '',
-            align: 'right',
-            cell: (t) =>
-                t.completed_at ? (
-                    <Button
-                        variant="ghost"
-                        className="px-2.5 py-1.5"
-                        onClick={() => router.patch(`/todos/${t.id}/reopen`, {}, { preserveScroll: true })}
-                    >
-                        Reopen
-                    </Button>
-                ) : (
-                    <Button
-                        className="px-2.5 py-1.5"
-                        onClick={() => router.patch(`/todos/${t.id}/complete`, {}, { preserveScroll: true })}
-                    >
-                        Done
-                    </Button>
-                ),
-        },
-    ];
+/*
+ | "type" has no control in the form — it is the chip row above the list. It is
+ | listed anyway so Reset clears the chip too, which is what someone means when
+ | they clear the filters.
+ */
+const FILTER_KEYS = [
+    'search', 'member', 'status', 'team', 'type',
+    'due_from', 'due_to', 'lead_from', 'lead_to',
+];
+
+export default function TasksIndex({
+    tasks,
+    tab,
+    filters,
+    members,
+    teams,
+    types,
+    tabCounts,
+    usageByTeam,
+}: Props) {
+    /*
+     | The tab and the type chip are not part of the filter form — they apply on
+     | click rather than waiting for the Filter button, because they read as
+     | navigation. Everything else in the query string rides along untouched.
+     */
+    const go = (params: Record<string, string | undefined>) =>
+        router.get('/todos', { ...filters, tab, ...params, page: undefined }, {
+            preserveState: true,
+            preserveScroll: true,
+            replace: true,
+        });
+
+    const activeType = filters.type ?? '';
 
     return (
         <ConsoleLayout
             title="To-Dos"
             description="Work raised automatically when leads arrive, and anything added by hand."
-            actions={
-                <div className="flex items-center gap-2">
-                    <Pill tone="neutral">{counts.open} open</Pill>
-                    {counts.overdue > 0 && <Pill tone="bad">{counts.overdue} overdue</Pill>}
-                </div>
-            }
         >
             <Head title="To-Dos" />
 
-            <DataTable
-                page={tasks}
-                columns={columns}
-                filters={filters}
-                url="/todos"
-                emptyTitle="Nothing to do"
-                emptyHint="To-dos appear here when a campaign's rules raise one, or when you add one against a lead."
-                ownSearch
-                toolbar={
-                    <FilterForm url="/todos" filters={filters} keys={FILTER_KEYS}>
-                        <FilterSearch placeholder="Search to-dos…" />
+            <div className="space-y-4">
+                {/* The tab rides along so applying or resetting a filter keeps
+                    you on the list you were reading. */}
+                <FilterForm url="/todos" filters={{ ...filters, tab }} keys={FILTER_KEYS}>
+                    <FilterSearch placeholder="Search to-dos…" />
 
-                        <FilterSelect
-                            name="state"
-                            label="All states"
-                            options={[
-                                { value: 'open', label: 'Open' },
-                                { value: 'overdue', label: 'Overdue' },
-                                { value: 'done', label: 'Done' },
-                            ]}
+                    <FilterField label="Task due date">
+                        <DateRangeFilter fromName="due_from" toName="due_to" />
+                    </FilterField>
+
+                    <FilterSelect
+                        name="team"
+                        label="All teams"
+                        options={teams.map((t) => ({ value: String(t.id), label: t.name }))}
+                    />
+
+                    <FilterSelect
+                        name="status"
+                        label="All statuses"
+                        options={[
+                            { value: 'open', label: 'Open' },
+                            { value: 'overdue', label: 'Overdue' },
+                            { value: 'done', label: 'Done' },
+                        ]}
+                    />
+
+                    {/* A member only ever has their own work, so the picker
+                        would offer a list of one. */}
+                    {members.length > 0 && (
+                        <MultiSelect
+                            name="member"
+                            label="Assigned to"
+                            searchPlaceholder="Search members…"
+                            options={members.map((m) => ({ value: String(m.id), label: m.name }))}
                         />
+                    )}
 
-                        {members.length > 0 && (
-                            <MultiSelect
-                                name="member"
-                                label="All owners"
-                                searchPlaceholder="Search members…"
-                                options={members.map((m) => ({ value: String(m.id), label: m.name }))}
-                            />
-                        )}
+                    <FilterField label="Lead created date">
+                        <DateRangeFilter fromName="lead_from" toName="lead_to" />
+                    </FilterField>
+                </FilterForm>
 
-                        {types.length > 0 && (
-                            <MultiSelect
-                                name="type"
-                                label="All types"
-                                searchPlaceholder="Search types…"
-                                options={types.map((t) => ({ value: t, label: t }))}
-                            />
-                        )}
-                    </FilterForm>
-                }
-            />
+                {usageByTeam.length > 0 && <UsageByTeam rows={usageByTeam} />}
+
+                <div className="overflow-hidden rounded-xl border border-border bg-card">
+                    <div className="flex overflow-x-auto border-b border-border">
+                        {TABS.map((t) => (
+                            <button
+                                key={t.key}
+                                type="button"
+                                onClick={() => go({ tab: t.key })}
+                                aria-current={tab === t.key ? 'page' : undefined}
+                                className={`relative shrink-0 px-5 py-3 text-sm font-semibold transition ${
+                                    tab === t.key
+                                        ? 'text-primary'
+                                        : 'text-muted-foreground hover:text-foreground'
+                                }`}
+                            >
+                                {t.label}
+                                <span
+                                    className={`tabular ml-2 rounded-full px-1.5 py-0.5 text-xs ${
+                                        tab === t.key
+                                            ? 'bg-primary text-primary-foreground'
+                                            : 'bg-muted text-muted-foreground'
+                                    }`}
+                                >
+                                    {tabCounts[t.key] ?? 0}
+                                </span>
+                                {tab === t.key && (
+                                    <span className="absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-primary" />
+                                )}
+                            </button>
+                        ))}
+                    </div>
+
+                    {types.length > 0 && (
+                        <div className="flex flex-wrap gap-2 px-4 py-3">
+                            <Chip active={activeType === ''} onClick={() => go({ type: undefined })}>
+                                All
+                            </Chip>
+                            {types.map((t) => (
+                                <Chip key={t} active={activeType === t} onClick={() => go({ type: t })}>
+                                    {t}
+                                </Chip>
+                            ))}
+                        </div>
+                    )}
+                </div>
+
+                <DataTable
+                    page={tasks}
+                    filters={{ ...filters, tab }}
+                    url="/todos"
+                    ownSearch
+                    emptyTitle="Nothing to do here"
+                    emptyHint="To-dos appear when a campaign's rules raise one, or when you add one against a lead."
+                    renderCard={(t) => <TaskCard task={t} />}
+                />
+            </div>
         </ConsoleLayout>
     );
 }
 
-/** Overdue is the only thing worth colouring — it is the reason to look. */
+/**
+ * A labelled slot on the filter row.
+ *
+ * The row carries two date ranges — when the to-do is due, and when the lead
+ * came in — and four bare date boxes side by side say nothing about which is
+ * which. Inline rather than stacked so the row keeps one height.
+ */
+function FilterField({ label, children }: { label: string; children: React.ReactNode }) {
+    return (
+        <div className="flex shrink-0 items-center gap-1.5">
+            <span className="whitespace-nowrap text-xs font-medium text-muted-foreground">{label}</span>
+            {children}
+        </div>
+    );
+}
+
+function Chip({
+    active,
+    onClick,
+    children,
+}: {
+    active: boolean;
+    onClick: () => void;
+    children: React.ReactNode;
+}) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            aria-pressed={active}
+            className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide transition ${
+                active
+                    ? 'border-primary bg-primary text-primary-foreground'
+                    : 'border-border text-muted-foreground hover:border-primary/50 hover:text-foreground'
+            }`}
+        >
+            {children}
+        </button>
+    );
+}
+
+/** Open work per team — where the pressure is, before opening a single card. */
+function UsageByTeam({ rows }: { rows: { team: string; total: number }[] }) {
+    const highest = Math.max(...rows.map((r) => r.total), 1);
+
+    return (
+        <section className="rounded-xl border border-border bg-card p-4">
+            <h2 className="eyebrow mb-3">Usage by team</h2>
+
+            <div className="space-y-2.5">
+                {rows.map((r) => (
+                    <div key={r.team} className="flex items-center gap-3">
+                        <span className="w-40 shrink-0 truncate text-sm font-medium" title={r.team}>
+                            {r.team}
+                        </span>
+                        <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
+                            <div
+                                className="h-full rounded-full bg-primary"
+                                style={{ width: `${(r.total / highest) * 100}%` }}
+                            />
+                        </div>
+                        <span className="tabular w-10 shrink-0 text-right text-sm font-semibold">
+                            {r.total}
+                        </span>
+                    </div>
+                ))}
+            </div>
+        </section>
+    );
+}
+
+function TaskCard({ task }: { task: Task }) {
+    const done = !!task.completed_at;
+    const lead = task.lead;
+
+    return (
+        <div className="flex flex-wrap items-center gap-3 px-4 py-3.5 transition hover:bg-muted/40">
+            <Avatar name={lead?.name ?? task.title} />
+
+            <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                    {lead ? (
+                        <Link
+                            href={`/leads/${lead.id}`}
+                            className={`truncate font-semibold hover:text-primary ${done ? 'text-muted-foreground line-through' : ''}`}
+                        >
+                            {lead.name}
+                        </Link>
+                    ) : (
+                        <span className="truncate font-semibold">{task.title}</span>
+                    )}
+
+                    {lead?.stage && (
+                        <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold">
+                            {lead.stage.emoji} {lead.stage.name}
+                        </span>
+                    )}
+
+                    {lead?.is_existing && (
+                        <span
+                            className="rounded px-1.5 py-0.5 text-[10px] font-bold uppercase"
+                            style={{ background: 'var(--warn-soft)', color: 'var(--warn)' }}
+                        >
+                            Repeat
+                        </span>
+                    )}
+                </div>
+
+                <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
+                    <span className="font-semibold uppercase tracking-wide">{task.type}</span>
+                    <span aria-hidden>·</span>
+                    <span className="truncate">{task.title}</span>
+                    {lead && (
+                        <>
+                            <span aria-hidden>·</span>
+                            <span className="data">{lead.mobile}</span>
+                        </>
+                    )}
+                </p>
+            </div>
+
+            <Due at={task.due_at} done={done} />
+
+            <span className="w-32 shrink-0 truncate text-sm text-muted-foreground" title={task.assignee?.name}>
+                {task.assignee?.name ?? 'Unassigned'}
+            </span>
+
+            <div className="flex shrink-0 items-center gap-1.5">
+                {lead && (
+                    <>
+                        <IconLink href={`tel:${lead.mobile}`} label={`Call ${lead.name}`} tone="var(--good)">
+                            <path d="M4 5c0-1 1-2 2-2h1.5l1.5 4-2 1a12 12 0 0 0 5 5l1-2 4 1.5V19c0 1-1 2-2 2A16 16 0 0 1 4 5Z" />
+                        </IconLink>
+
+                        <IconLink
+                            href={`https://wa.me/91${lead.mobile}`}
+                            label={`WhatsApp ${lead.name}`}
+                            tone="#25d366"
+                            external
+                        >
+                            <path d="M3.5 20.5 5 16a8 8 0 1 1 3 3l-4.5 1.5Z" />
+                            <path d="M8.5 9.5c0 3 3 6 6 6l1.5-1.5-2-1-1 1c-1-.5-2-1.5-2.5-2.5l1-1-1-2-2 1Z" />
+                        </IconLink>
+                    </>
+                )}
+
+                <button
+                    type="button"
+                    onClick={() =>
+                        router.patch(`/todos/${task.id}/${done ? 'reopen' : 'complete'}`, {}, { preserveScroll: true })
+                    }
+                    className={`h-8 rounded-lg px-3 text-sm font-semibold transition hover:opacity-85 ${
+                        done ? 'border border-border' : 'bg-primary text-primary-foreground'
+                    }`}
+                >
+                    {done ? 'Reopen' : 'Done'}
+                </button>
+            </div>
+        </div>
+    );
+}
+
+/** Initials on a tinted disc — the same person keeps the same colour. */
+function Avatar({ name }: { name: string }) {
+    const initials = name
+        .split(/\s+/)
+        .slice(0, 2)
+        .map((w) => w[0])
+        .join('')
+        .toUpperCase();
+
+    // Deterministic hue from the name, so the list is scannable by colour.
+    const hue = [...name].reduce((sum, c) => sum + c.charCodeAt(0), 0) % 360;
+
+    return (
+        <span
+            aria-hidden
+            className="grid size-10 shrink-0 place-items-center rounded-full text-sm font-bold"
+            style={{ background: `hsl(${hue} 70% 92%)`, color: `hsl(${hue} 55% 32%)` }}
+        >
+            {initials || '?'}
+        </span>
+    );
+}
+
+/**
+ * How late the work is, in the words someone would use.
+ *
+ * Overdue is the only thing worth colouring — it is the reason to look.
+ */
 function Due({ at, done }: { at: string | null; done: boolean }) {
     if (!at) {
-        return <span className="text-muted-foreground">No deadline</span>;
+        return <span className="w-32 shrink-0 text-sm text-muted-foreground">No deadline</span>;
     }
 
     const when = new Date(at);
-    const overdue = !done && when.getTime() < Date.now();
-    const label = when.toISOString().slice(0, 16).replace('T', ' ');
+    const minutes = Math.round((Date.now() - when.getTime()) / 60000);
+    const overdue = !done && minutes > 0;
 
     return (
-        <span className="data" style={overdue ? { color: 'var(--bad)', fontWeight: 600 } : undefined}>
-            {label}
-            {overdue && ' · overdue'}
+        <span
+            className={`w-32 shrink-0 text-sm font-semibold ${overdue ? '' : 'text-muted-foreground'}`}
+            title={when.toLocaleString()}
+            style={overdue ? { color: 'var(--bad)' } : undefined}
+        >
+            {overdue ? `${relative(minutes)} overdue` : `Due ${relative(-minutes)}`}
         </span>
+    );
+}
+
+/** "3 days", "20 mins" — the largest unit that still says something useful. */
+function relative(minutes: number): string {
+    const n = Math.abs(minutes);
+
+    if (n < 60) return `${n} min${n === 1 ? '' : 's'}`;
+
+    const hours = Math.round(n / 60);
+    if (hours < 24) return `${hours} hr${hours === 1 ? '' : 's'}`;
+
+    const days = Math.round(hours / 24);
+    return `${days} day${days === 1 ? '' : 's'}`;
+}
+
+function IconLink({
+    href,
+    label,
+    tone,
+    external = false,
+    children,
+}: {
+    href: string;
+    label: string;
+    tone: string;
+    external?: boolean;
+    children: React.ReactNode;
+}) {
+    return (
+        <a
+            href={href}
+            aria-label={label}
+            title={label}
+            {...(external ? { target: '_blank', rel: 'noreferrer' } : {})}
+            className="grid size-8 place-items-center rounded-lg border border-border transition hover:opacity-80"
+            style={{ color: tone }}
+        >
+            <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                {children}
+            </svg>
+        </a>
     );
 }
