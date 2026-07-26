@@ -70,6 +70,7 @@ Route::middleware('auth')->group(function () {
     Route::patch('leads/{lead}/status', [LeadController::class, 'updateStatus'])->name('leads.status');
 
     // Customers — one person, many leads
+    Route::post('customers', [CustomerController::class, 'store'])->name('customers.store');
     Route::get('customers/export', [CustomerController::class, 'export'])->name('customers.export');
     Route::get('customers', [CustomerController::class, 'index'])->name('customers.index');
     Route::get('customers/{customer}', [CustomerController::class, 'show'])->name('customers.show');

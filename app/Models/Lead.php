@@ -17,7 +17,8 @@ class Lead extends Model
         // external_id must stay fillable — the sync dedupes on it, and mass
         // assignment would otherwise drop it silently and re-import every run.
         'external_id',
-        'customer_id', 'name', 'mobile', 'email', 'source', 'campaign',
+        'customer_id', 'name', 'mobile', 'email', 'source', 'source_type',
+        'campaign', 'deal_value',
         'integration_id', 'lead_stage_id', 'lead_group_id', 'custom_data',
         'assigned_to', 'viewed_at', 'version', 'last_updated_by',
         'is_existing', 'duplicate_of_id',
@@ -30,6 +31,7 @@ class Lead extends Model
             'notify_at' => 'datetime',
             'notified_at' => 'datetime',
             'custom_data' => 'array',
+            'deal_value' => 'decimal:2',
             'is_existing' => 'boolean',
         ];
     }

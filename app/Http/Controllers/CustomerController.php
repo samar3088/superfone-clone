@@ -3,12 +3,18 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Crm\CustomerFilterRequest;
+use App\Http\Requests\Crm\StoreCustomerRequest;
 use App\Models\Customer;
+use App\Models\Lead;
+use App\Models\LeadGroup;
+use App\Models\LeadStage;
 use App\Models\User;
 use App\Services\Crm\CustomerService;
+use App\Services\Crm\TaskService;
 use App\Services\Support\DataTableService;
 use App\Services\Support\ExportService;
 use App\Support\FilterList;
+use App\Support\LeadProviders;
 use App\Support\Roles;
 use Illuminate\Contracts\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -34,7 +40,66 @@ class CustomerController extends Controller
             'customers' => $this->table($request)->paginate($request),
             'filters' => $request->only([...self::FILTER_KEYS, 'sort', 'direction', 'per_page']),
             'members' => User::role([Roles::OWNER, Roles::MEMBER])->orderBy('name')->get(['id', 'name']),
+            // Options for the Create Contact form.
+            'options' => [
+                'sourceTypes' => LeadProviders::sourceTypes(),
+                'todoTypes' => LeadProviders::todoTypes(),
+                'stages' => LeadStage::where('is_active', true)->orderBy('sequence')
+                    ->get(['id', 'name', 'emoji']),
+                'groups' => LeadGroup::where('is_active', true)->get(['id', 'name']),
+            ],
         ]);
+    }
+
+    /**
+     * Create a contact by hand.
+     *
+     * Three things can come out of one submission: the contact itself, a lead
+     * if a stage was chosen, and a to-do against that lead. Each only happens
+     * if the form asked for it.
+     */
+    public function store(StoreCustomerRequest $request, TaskService $tasks): RedirectResponse
+    {
+        $data = $request->validated();
+
+        ['customer' => $customer, 'existing' => $existing] = $this->customers->createManual($data);
+
+        $lead = null;
+
+        if (filled($data['lead_stage_id'] ?? null)) {
+            $lead = Lead::create([
+                'customer_id' => $customer->id,
+                'name' => $customer->name,
+                'mobile' => $customer->mobile,
+                'email' => $customer->email,
+                // Nullable fields are absent from validated() when not sent,
+                // so every read here has to tolerate a missing key.
+                'source' => ($data['source'] ?? null) ?: 'manual',
+                'source_type' => $data['source_type'] ?? null,
+                'campaign' => $data['campaign'] ?? null,
+                'deal_value' => $data['deal_value'] ?? null,
+                'lead_stage_id' => $data['lead_stage_id'],
+                'lead_group_id' => $data['lead_group_id'] ?? null,
+                'assigned_to' => $data['assigned_to'] ?? null,
+                // Entered by hand, so whoever typed it has already seen it.
+                'viewed_at' => now(),
+            ]);
+        }
+
+        if ($lead && ($data['create_task'] ?? false)) {
+            $tasks->createManual($lead, [
+                'type' => $data['task_type'],
+                // The note is what someone will read on the To-Dos list; with
+                // none given the task type says enough on its own.
+                'title' => ($data['task_note'] ?? null) ?: $data['task_type'],
+                'due_at' => $data['task_due_at'],
+                'assigned_to' => $data['assigned_to'] ?? null,
+            ], $request->user());
+        }
+
+        return back()->with('success', $existing
+            ? "{$customer->name} already existed — the new details were added to their record."
+            : "{$customer->name} added.");
     }
 
     /** One customer with every lead they have ever raised. */

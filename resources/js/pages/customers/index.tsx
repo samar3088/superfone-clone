@@ -1,6 +1,9 @@
 import { Head, Link } from '@inertiajs/react';
+import { useState } from 'react';
 
 import { Column, DataTable, Paginated } from '@/components/data-table';
+import { Button } from '@/components/ui-kit';
+import CreateContact, { ContactOptions } from './create-contact';
 import {
     DateRangeFilter,
     FilterForm,
@@ -28,11 +31,15 @@ export default function CustomersIndex({
     customers,
     filters,
     members,
+    options,
 }: {
     customers: Paginated<Customer>;
     filters: Filters;
     members: { id: number; name: string }[];
+    options: ContactOptions;
 }) {
+    const [creating, setCreating] = useState(false);
+
     const columns: Column<Customer>[] = [
         {
             key: 'name',
@@ -73,6 +80,7 @@ export default function CustomersIndex({
         <ConsoleLayout
             title="Customers"
             description="One record per person. The same person enquiring twice keeps one customer and two leads."
+            actions={<Button onClick={() => setCreating(true)}>＋ Create contact</Button>}
         >
             <Head title="Customers" />
             <DataTable
@@ -112,6 +120,14 @@ export default function CustomersIndex({
                     </FilterForm>
                 }
             />
+
+            {creating && (
+                <CreateContact
+                    options={options}
+                    members={members}
+                    onClose={() => setCreating(false)}
+                />
+            )}
         </ConsoleLayout>
     );
 }

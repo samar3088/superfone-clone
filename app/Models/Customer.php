@@ -16,7 +16,8 @@ class Customer extends Model
 
     protected $fillable = [
         'name', 'mobile', 'email', 'city', 'notes', 'last_activity_at',
-        'merged_into_id', 'merged_at',
+        'website', 'business_name', 'house_no', 'address_1', 'address_2',
+        'additional_info', 'merged_into_id', 'merged_at',
     ];
 
     protected function casts(): array
@@ -35,6 +36,22 @@ class Customer extends Model
     public function calls(): HasMany
     {
         return $this->hasMany(Call::class);
+    }
+
+    /** Every phone number and email address this customer can be reached on. */
+    public function channels(): HasMany
+    {
+        return $this->hasMany(CustomerChannel::class);
+    }
+
+    public function phones(): HasMany
+    {
+        return $this->channels()->where('type', CustomerChannel::PHONE)->orderByDesc('is_primary');
+    }
+
+    public function emails(): HasMany
+    {
+        return $this->channels()->where('type', CustomerChannel::EMAIL)->orderByDesc('is_primary');
     }
 
     public function mergedInto(): BelongsTo
