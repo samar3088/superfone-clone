@@ -7,6 +7,7 @@ use App\Models\Customer;
 use App\Models\Integration;
 use App\Models\Lead;
 use App\Models\LeadStage;
+use App\Models\Team;
 use App\Models\User;
 use App\Support\Roles;
 use Illuminate\Database\Seeder;
@@ -51,10 +52,18 @@ class DemoCrmDataSeeder extends Seeder
             ['Deepa Pillai', '9880099008', 'deepa.pillai@example.in', 'Chennai'],
         ];
 
+        // Whose book these contacts sit in. Without it the To-Dos usage card
+        // has only "No team" to report, which tells nobody anything.
+        $teamId = Team::orderBy('id')->value('id');
+
         foreach ($people as $i => [$name, $mobile, $email, $city]) {
             $customer = Customer::updateOrCreate(
                 ['mobile' => $mobile],
-                ['name' => $name, 'email' => $email, 'city' => $city, 'last_activity_at' => now()->subHours($i)]
+                [
+                    'name' => $name, 'email' => $email, 'city' => $city,
+                    'team_id' => $teamId,
+                    'last_activity_at' => now()->subHours($i),
+                ]
             );
 
             // The first two enquired twice — same customer, separate leads.
