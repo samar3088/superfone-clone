@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
@@ -44,6 +45,18 @@ class Customer extends Model
     public function team(): BelongsTo
     {
         return $this->belongsTo(Team::class);
+    }
+
+    /**
+     * The most recent enquiry, for the columns that show one value per contact
+     * — stage, source, owner, deal value.
+     *
+     * latestOfMany rather than loading every lead and taking the first: this
+     * stays one extra query for the whole page instead of one per row.
+     */
+    public function latestLead(): HasOne
+    {
+        return $this->hasOne(Lead::class)->latestOfMany();
     }
 
     /** Whoever typed this contact in; null for anyone the sync brought in. */

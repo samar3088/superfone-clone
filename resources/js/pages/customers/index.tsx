@@ -3,8 +3,11 @@ import { useState } from 'react';
 
 import { AdvancedFilters, FilterGroup } from '@/components/advanced-filters';
 import { Column, DataTable, Paginated } from '@/components/data-table';
+import { ColumnChoice, TableSettings } from '@/components/table-settings';
 import { Button } from '@/components/ui-kit';
+import { useColumns } from '@/hooks/use-columns';
 import CreateContact, { ContactOptions } from './create-contact';
+import ImportContacts from './import-contacts';
 import {
     DateRangeFilter,
     FilterForm,
@@ -21,9 +24,41 @@ interface Customer {
     mobile: string;
     email: string | null;
     city: string | null;
+    business_name: string | null;
+    additional_info: string | null;
     leads_count: number;
     last_activity_at: string | null;
+    created_at: string;
+    tags: { id: number; name: string; color: string; emoji: string | null }[];
+    team: { id: number; name: string } | null;
+    creator: { id: number; name: string } | null;
+    latest_lead: {
+        source: string | null;
+        deal_value: string | null;
+        stage: { id: number; name: string; emoji: string | null } | null;
+        assignee: { id: number; name: string } | null;
+    } | null;
 }
+
+/** Every column the chooser offers. Name is locked — a row needs an identity. */
+const COLUMN_CHOICES: ColumnChoice[] = [
+    { key: 'name', label: 'Name', locked: true },
+    { key: 'city', label: 'City' },
+    { key: 'additional_info', label: 'Additional Info' },
+    { key: 'email', label: 'Email' },
+    { key: 'tags', label: 'Tags' },
+    { key: 'stage', label: 'Lead stage' },
+    { key: 'deal_value', label: 'Deal Value' },
+    { key: 'source', label: 'Source' },
+    { key: 'owner', label: 'Lead Owner' },
+    { key: 'team', label: 'Team Name' },
+    { key: 'business_name', label: 'Business Name' },
+    { key: 'leads', label: 'Leads' },
+    { key: 'created_at', label: 'Date created' },
+    { key: 'last_activity_at', label: 'Last activity' },
+];
+
+const DEFAULT_COLUMNS = ['name', 'additional_info', 'email', 'tags', 'stage', 'source', 'owner', 'leads'];
 
 /** Everything the Reset button clears. */
 const FILTER_KEYS = ['search', 'member', 'leads', 'date_from', 'date_to'];
@@ -41,6 +76,11 @@ export default function CustomersIndex({
 }) {
     const [creating, setCreating] = useState(false);
     const [moreFilters, setMoreFilters] = useState(false);
+    const [importing, setImporting] = useState(false);
+    const [tableSettings, setTableSettings] = useState(false);
+    const [menuOpen, setMenuOpen] = useState(false);
+
+    const [visibleColumns, setVisibleColumns] = useColumns('customers.columns', DEFAULT_COLUMNS);
 
     /*
      | Assigned to and the search box stay in the always-visible row, because
@@ -92,47 +132,144 @@ export default function CustomersIndex({
             : filters[g.name],
     ).length;
 
-    const columns: Column<Customer>[] = [
-        {
+    /*
+     | Every column the table can show. Which ones actually render is decided
+     | by the chooser — defined here in one list so the chooser and the table
+     | cannot disagree about what exists.
+     */
+    const allColumns: Record<string, Column<Customer>> = {
+        name: {
             key: 'name',
-            header: 'Customer',
+            header: 'Name',
             sortable: true,
             cell: (c) => (
-                <Link href={`/customers/${c.id}`} className="font-semibold hover:text-primary">
-                    {c.name}
-                    {c.city && <span className="ml-2 text-xs font-normal text-muted-foreground">{c.city}</span>}
-                </Link>
+                <div className="min-w-0">
+                    <Link href={`/customers/${c.id}`} className="font-semibold hover:text-primary">
+                        {c.name}
+                    </Link>
+                    <p className="data text-xs text-muted-foreground">{c.mobile}</p>
+                </div>
             ),
         },
-        { key: 'mobile', header: 'Mobile', cell: (c) => <span className="data">{c.mobile}</span> },
-        { key: 'email', header: 'Email', cell: (c) => c.email ?? <span className="text-muted-foreground">—</span> },
-        {
+        city: { key: 'city', header: 'City', cell: (c) => c.city ?? <Dash /> },
+        additional_info: {
+            key: 'additional_info',
+            header: 'Additional Info',
+            cell: (c) => c.additional_info
+                ? <span className="line-clamp-1" title={c.additional_info}>{c.additional_info}</span>
+                : <Dash />,
+        },
+        email: { key: 'email', header: 'Email', cell: (c) => c.email ?? <Dash /> },
+        tags: {
+            key: 'tags',
+            header: 'Tags',
+            cell: (c) => c.tags.length === 0 ? <Dash /> : (
+                <span className="flex flex-wrap gap-1">
+                    {c.tags.map((t) => (
+                        <span
+                            key={t.id}
+                            className="rounded-md px-1.5 py-0.5 text-xs font-semibold"
+                            style={{
+                                background: `color-mix(in srgb, ${t.color} 14%, transparent)`,
+                                color: t.color,
+                            }}
+                        >
+                            {t.emoji} {t.name}
+                        </span>
+                    ))}
+                </span>
+            ),
+        },
+        stage: {
+            key: 'stage',
+            header: 'Lead stage',
+            cell: (c) => c.latest_lead?.stage
+                ? <span>{c.latest_lead.stage.emoji} {c.latest_lead.stage.name}</span>
+                : <Dash />,
+        },
+        deal_value: {
+            key: 'deal_value',
+            header: 'Deal Value',
+            align: 'right',
+            cell: (c) => c.latest_lead?.deal_value
+                ? <span className="tabular">{Number(c.latest_lead.deal_value).toLocaleString()}</span>
+                : <Dash />,
+        },
+        source: { key: 'source', header: 'Source', cell: (c) => c.latest_lead?.source ?? <Dash /> },
+        owner: {
+            key: 'owner',
+            header: 'Lead Owner',
+            cell: (c) => c.latest_lead?.assignee?.name ?? <Dash />,
+        },
+        team: { key: 'team', header: 'Team Name', cell: (c) => c.team?.name ?? <Dash /> },
+        business_name: { key: 'business_name', header: 'Business Name', cell: (c) => c.business_name ?? <Dash /> },
+        leads: {
             key: 'leads',
             header: 'Leads',
             align: 'right',
             cell: (c) => <span className="tabular font-medium">{c.leads_count}</span>,
         },
-        {
+        created_at: {
+            key: 'created_at',
+            header: 'Date created',
+            sortable: true,
+            cell: (c) => <span className="data text-muted-foreground">{c.created_at.slice(0, 10)}</span>,
+        },
+        last_activity_at: {
             key: 'last_activity_at',
             header: 'Last activity',
             sortable: true,
             align: 'right',
-            cell: (c) =>
-                c.last_activity_at ? (
-                    <span className="data text-muted-foreground">
-                        {c.last_activity_at.slice(0, 16).replace('T', ' ')}
-                    </span>
-                ) : (
-                    <span className="text-muted-foreground">—</span>
-                ),
+            cell: (c) => c.last_activity_at
+                ? <span className="data text-muted-foreground">{c.last_activity_at.slice(0, 16).replace('T', ' ')}</span>
+                : <Dash />,
         },
-    ];
+    };
+
+    // Rendered in the chooser's order, so the table always reads the same way.
+    const columns = COLUMN_CHOICES
+        .filter((c) => visibleColumns.includes(c.key))
+        .map((c) => allColumns[c.key])
+        .filter(Boolean);
 
     return (
         <ConsoleLayout
             title="Customers"
             description="One record per person. The same person enquiring twice keeps one customer and two leads."
-            actions={<Button onClick={() => setCreating(true)}>＋ Create contact</Button>}
+            actions={
+                <div className="flex items-center gap-2">
+                    <Button onClick={() => setCreating(true)}>＋ Create contact</Button>
+
+                    <div className="relative">
+                        <button
+                            type="button"
+                            aria-label="More actions"
+                            aria-expanded={menuOpen}
+                            onClick={() => setMenuOpen((o) => !o)}
+                            className="grid size-10 place-items-center rounded-lg border border-border text-lg transition hover:bg-muted"
+                        >
+                            ⋯
+                        </button>
+
+                        {menuOpen && (
+                            <>
+                                {/* Catches the click that closes the menu, so it
+                                    shuts on any outside press. */}
+                                <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
+
+                                <div className="absolute right-0 top-12 z-50 w-52 overflow-hidden rounded-lg border border-border bg-card py-1 shadow-xl">
+                                    <MenuItem onClick={() => { setMenuOpen(false); setImporting(true); }}>
+                                        Import CSV
+                                    </MenuItem>
+                                    <MenuItem onClick={() => { setMenuOpen(false); setTableSettings(true); }}>
+                                        Table settings
+                                    </MenuItem>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                </div>
+            }
         >
             <Head title="Customers" />
             <DataTable
@@ -193,6 +330,17 @@ export default function CustomersIndex({
                 />
             )}
 
+            {importing && <ImportContacts onClose={() => setImporting(false)} />}
+
+            {tableSettings && (
+                <TableSettings
+                    columns={COLUMN_CHOICES}
+                    visible={visibleColumns}
+                    onSave={setVisibleColumns}
+                    onClose={() => setTableSettings(false)}
+                />
+            )}
+
             {creating && (
                 <CreateContact
                     options={options}
@@ -201,5 +349,22 @@ export default function CustomersIndex({
                 />
             )}
         </ConsoleLayout>
+    );
+}
+
+/** An empty cell, said the same way everywhere. */
+function Dash() {
+    return <span className="text-muted-foreground">—</span>;
+}
+
+function MenuItem({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition hover:bg-muted"
+        >
+            {children}
+        </button>
     );
 }

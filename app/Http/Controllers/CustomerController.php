@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Crm\CustomerFilterRequest;
+use App\Http\Requests\Crm\ImportContactsRequest;
 use App\Http\Requests\Crm\StoreCustomerRequest;
 use App\Models\Customer;
 use App\Models\Lead;
@@ -11,6 +12,7 @@ use App\Models\LeadStage;
 use App\Models\Tag;
 use App\Models\Team;
 use App\Models\User;
+use App\Services\Crm\ContactImportService;
 use App\Services\Crm\CustomerService;
 use App\Services\Crm\TaskService;
 use App\Services\Support\DataTableService;
@@ -119,6 +121,58 @@ class CustomerController extends Controller
             : "{$customer->name} added.");
     }
 
+    /**
+     * A filled-in template, generated rather than kept as a file on disk.
+     *
+     * Built from the same column map the parser uses, so the sample can never
+     * describe a format the importer no longer accepts.
+     */
+    public function importSample(): StreamedResponse
+    {
+        $filename = 'vvt-contacts-template.csv';
+
+        return response()->streamDownload(function () {
+            $out = fopen('php://output', 'w');
+
+            // Excel needs the BOM to read accented names as UTF-8.
+            fwrite($out, "\xEF\xBB\xBF");
+
+            fputcsv($out, ContactImportService::headings());
+
+            foreach (ContactImportService::SAMPLE_ROWS as $row) {
+                fputcsv($out, $row);
+            }
+
+            fclose($out);
+        }, $filename, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Cache-Control' => 'no-store',
+        ]);
+    }
+
+    public function import(ImportContactsRequest $request, ContactImportService $importer): RedirectResponse
+    {
+        $result = $importer->import(
+            $request->file('file'),
+            $request->user(),
+            $request->integer('team_id') ?: null,
+        );
+
+        $summary = "{$result['created']} added";
+
+        if ($result['matched'] > 0) {
+            $summary .= ", {$result['matched']} already on file";
+        }
+
+        if ($result['skipped'] > 0) {
+            $summary .= ", {$result['skipped']} skipped";
+        }
+
+        return back()
+            ->with($result['created'] > 0 ? 'success' : 'error', "Import finished — {$summary}.")
+            ->with('importErrors', $result['errors']);
+    }
+
     /** One customer with every lead they have ever raised. */
     public function show(Customer $customer): Response
     {
@@ -178,8 +232,25 @@ class CustomerController extends Controller
 
     private function table(Request $request): DataTableService
     {
-        return DataTableService::for(Customer::query()->active()->withCount('leads'))
-            ->select(['id', 'name', 'mobile', 'email', 'city', 'last_activity_at', 'created_at'])
+        return DataTableService::for(
+            Customer::query()->active()->withCount('leads')->with([
+                'tags:id,name,color,emoji',
+                'team:id,name',
+                'creator:id,name',
+                /*
+                 | One extra query for the page, not one per row.
+                 |
+                 | Loaded whole rather than with a column list: latestOfMany
+                 | joins leads to itself, so an unqualified "customer_id" in a
+                 | select is ambiguous and the query dies.
+                 */
+                'latestLead',
+                'latestLead.stage:id,name,emoji',
+                'latestLead.assignee:id,name',
+            ])
+        )
+            ->select(['id', 'team_id', 'created_by', 'name', 'mobile', 'email', 'city',
+                'business_name', 'additional_info', 'last_activity_at', 'created_at'])
             ->searchable(['name', 'mobile', 'email'])
             ->sortable(['name', 'created_at', 'last_activity_at'])
             // A customer has no owner of their own — they belong to whoever is

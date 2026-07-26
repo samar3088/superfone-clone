@@ -72,6 +72,8 @@ Route::middleware('auth')->group(function () {
     // Customers — one person, many leads
     Route::post('customers', [CustomerController::class, 'store'])->name('customers.store');
     Route::get('customers/export', [CustomerController::class, 'export'])->name('customers.export');
+    Route::get('customers/import/sample', [CustomerController::class, 'importSample'])->name('customers.import.sample');
+    Route::post('customers/import', [CustomerController::class, 'import'])->name('customers.import');
     Route::get('customers', [CustomerController::class, 'index'])->name('customers.index');
     Route::get('customers/{customer}', [CustomerController::class, 'show'])->name('customers.show');
     Route::patch('customers/{customer}', [CustomerController::class, 'update'])->name('customers.update');
